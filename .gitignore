@@ -1,0 +1,23 @@
+# Ignore all files in current directory
+claude_code_prompt.md
+environment_secret_inventory.md
+github_actions_workflow_spec.md
+infrastructure_outline.md
+!.gitignore
+
+# Ignore environment files
+.env
+.env.local
+
+# Ignore Python files and directories
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
