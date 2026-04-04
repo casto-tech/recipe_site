@@ -1,0 +1,50 @@
+# Version control
+.git
+.gitignore
+
+# Secrets — never in the image
+.env
+*.env
+
+# Python bytecode
+*.pyc
+*.pyo
+__pycache__
+*.pyd
+
+# Media uploads (ephemeral; not baked into image)
+media/
+
+# Test and dev artefacts
+tests/
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# CI/CD
+.github/
+
+# Documentation
+*.md
+LICENSE
+
+# Local development
+docker-compose.yml
+docker-compose*.yml
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Virtual environments
+venv/
+.venv/
+env/

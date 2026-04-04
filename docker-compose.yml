@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    # No ports: mapping — db is not reachable from the host or internet.
+    # The web service communicates with it on the internal recipe_network only.
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME:-recipes}
+      POSTGRES_USER: ${DB_USER:-recipes_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # scram-sha-256 — never 'trust'
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - recipe_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-recipes_user} -d ${DB_NAME:-recipes}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      args:
+        DJANGO_SECRET_KEY: build-time-placeholder-not-used-at-runtime
+        DJANGO_SETTINGS_MODULE: config.settings.development
+        ADMIN_ENABLED: "True"
+    # Run as root in local dev so the volume-mounted host files (owned by your
+    # user) are readable. The Dockerfile's USER appuser applies in production
+    # where no volume mount overrides /app.
+    user: root
+    env_file:
+      - .env
+    ports:
+      # Expose 8000 to the host for local development only
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - recipe_network
+    volumes:
+      # :z relabels host files for SELinux (required on Fedora/RHEL)
+      - .:/app:z
+      # Persist uploaded media between container restarts
+      - media_files:/app/media
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+
+volumes:
+  postgres_data:
+  media_files:
+
+networks:
+  recipe_network:
+    driver: bridge

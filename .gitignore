@@ -1,15 +1,16 @@
-# Ignore all files in current directory
+# ── Planning / spec docs (never committed) ───────────────────────────────────
 claude_code_prompt.md
 environment_secret_inventory.md
 github_actions_workflow_spec.md
 infrastructure_outline.md
-!.gitignore
 
-# Ignore environment files
+# ── Secrets — NEVER commit these ─────────────────────────────────────────────
 .env
 .env.local
+.env.example
+*.env
 
-# Ignore Python files and directories
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -17,7 +18,40 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 *.egg-info/
 dist/
 build/
 .pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+pip-wheel-metadata/
+
+# ── Django ────────────────────────────────────────────────────────────────────
+staticfiles/
+media/
+*.log
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+.docker/
+
+# ── OS / Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+.claude/
+
+# ── Security scan artefacts ───────────────────────────────────────────────────
+bandit-report.json
+trivy-results.sarif

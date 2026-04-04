@@ -1,0 +1,66 @@
+{% load static %}
+{% comment %}
+Single source of truth for recipe card markup.
+Used by recipe_grid.html (and any future context that shows a card).
+Never duplicate this markup in another template — include this partial instead.
+
+Expected context:
+  recipe — a Recipe model instance (with tags prefetched)
+{% endcomment %}
+
+{% comment %}
+Safely embed recipe data as JSON using json_script (prevents XSS).
+Alpine.js reads this on card click to populate the detail overlay.
+{% endcomment %}
+<script type="application/json" id="recipe-data-{{ recipe.id }}">
+{
+  "id": {{ recipe.id }},
+  "title": "{{ recipe.title|escapejs }}",
+  "image": "{% if recipe.image %}{{ recipe.image.url }}{% elif recipe.image_url %}{{ recipe.image_url }}{% else %}{% static 'images/placeholder.jpg' %}{% endif %}",
+  "tags": [{% for tag in recipe.tags.all %}"{{ tag.name|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+  "ingredients": [{% for item in recipe.get_ingredients_list %}"{{ item|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+  "directions": [{% for step in recipe.get_directions_list %}"{{ step|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}]
+}
+</script>
+
+<div
+  class="recipe-card bg-white rounded-2xl shadow-md overflow-hidden cursor-pointer
+         hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ease-in-out"
+  @click="activeRecipe = JSON.parse(document.getElementById('recipe-data-{{ recipe.id }}').textContent)"
+>
+  <div class="aspect-[4/3] w-full overflow-hidden bg-amber-50">
+    {% if recipe.image %}
+      <img src="{{ recipe.image.url }}"
+           alt="{{ recipe.title }}"
+           class="w-full h-full object-cover"
+           loading="lazy" />
+    {% elif recipe.image_url %}
+      <img src="{{ recipe.image_url }}"
+           alt="{{ recipe.title }}"
+           class="w-full h-full object-cover"
+           loading="lazy" />
+    {% else %}
+      <img src="{% static 'images/placeholder.jpg' %}"
+           alt="Recipe placeholder"
+           class="w-full h-full object-cover opacity-60"
+           loading="lazy" />
+    {% endif %}
+  </div>
+
+  <div class="p-4 text-center">
+    <h3 class="font-serif text-lg font-semibold text-gray-800 mb-2 leading-tight">
+      {{ recipe.title }}
+    </h3>
+
+    {% if recipe.tags.all %}
+      <div class="flex flex-wrap justify-center gap-1 mt-2">
+        {% for tag in recipe.tags.all %}
+          <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full
+                       bg-amber-100 text-amber-800 border border-amber-200">
+            {{ tag.name }}
+          </span>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>

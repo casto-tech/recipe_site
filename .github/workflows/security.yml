@@ -1,0 +1,155 @@
+name: Security — SAST, CVE & Image Scan
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Job 1: Python dependency CVE audit ────────────────────────────────────
+  dependency-audit:
+    name: Python CVE Audit (pip-audit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run pip-audit
+        # Fails the pipeline on any HIGH or CRITICAL CVE in installed packages
+        run: pip-audit --strict --vulnerability-service pypi
+
+  # ── Job 2: Python SAST (bandit) ───────────────────────────────────────────
+  sast:
+    name: Python SAST (bandit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install bandit
+        run: pip install bandit[toml]
+
+      - name: Run bandit SAST scan
+        # -ll = report only MEDIUM and above severity issues
+        # -ii = report only MEDIUM and above confidence issues
+        # Fails if any HIGH severity finding is detected
+        run: |
+          bandit -r recipes/ config/ \
+            -ll -ii \
+            --exclude recipes/migrations \
+            -f json \
+            -o bandit-report.json || true
+          # Parse results and fail on HIGH severity
+          python -c "
+          import json, sys
+          with open('bandit-report.json') as f:
+              report = json.load(f)
+          high_issues = [
+              r for r in report.get('results', [])
+              if r['issue_severity'] == 'HIGH'
+          ]
+          if high_issues:
+              print(f'FAIL: {len(high_issues)} HIGH severity finding(s):')
+              for issue in high_issues:
+                  print(f'  [{issue[\"test_id\"]}] {issue[\"issue_text\"]} — {issue[\"filename\"]}:{issue[\"line_number\"]}')
+              sys.exit(1)
+          print(f'PASS: No HIGH severity findings. Total issues: {len(report.get(\"results\", []))}')
+          "
+
+      - name: Upload bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          retention-days: 7
+
+  # ── Job 3: CodeQL Static Analysis ─────────────────────────────────────────
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          # Queries: security-extended catches more issues than the default set
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+          # Results uploaded to GitHub Security tab as SARIF
+          # Does not fail the pipeline — findings are tracked in Security tab
+
+  # ── Job 4: Docker Image CVE Scan (Trivy) ──────────────────────────────────
+  trivy:
+    name: Docker Image CVE Scan (Trivy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image for scanning
+        run: |
+          docker build \
+            --build-arg DJANGO_SECRET_KEY=scan-placeholder-not-real \
+            -t recipesite:scan \
+            .
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: recipesite:scan
+          format: sarif
+          output: trivy-results.sarif
+          # Fail on HIGH or CRITICAL CVEs in OS packages and Python libraries
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-docker
+
+      - name: Upload Trivy SARIF artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-scan-results
+          path: trivy-results.sarif
+          retention-days: 7

@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.development"
+python_files = ["tests/test_*.py"]
+addopts = "--cov=recipes --cov-report=term-missing --cov-fail-under=80"
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+exclude = '''
+/(
+    migrations
+  | venv
+  | staticfiles
+)/
+'''
+
+[tool.bandit]
+exclude_dirs = ["recipes/migrations", "tests", "venv"]
+skips = []

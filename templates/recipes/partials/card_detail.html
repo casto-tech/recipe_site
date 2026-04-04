@@ -1,0 +1,106 @@
+{% comment %}
+Card detail overlay — shown when activeRecipe is set by Alpine.js.
+Rendered inside the Alpine.js x-data scope from index.html.
+Uses x-show and x-transition for the flip/zoom animation.
+{% endcomment %}
+
+<!-- Overlay backdrop -->
+<div
+  x-show="activeRecipe !== null"
+  x-transition:enter="transition ease-out duration-300"
+  x-transition:enter-start="opacity-0"
+  x-transition:enter-end="opacity-100"
+  x-transition:leave="transition ease-in duration-200"
+  x-transition:leave-start="opacity-100"
+  x-transition:leave-end="opacity-0"
+  @click.self="activeRecipe = null"
+  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+  style="display: none;"
+>
+
+  <!-- Zoomed card -->
+  <div
+    x-show="activeRecipe !== null"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 scale-75"
+    x-transition:enter-end="opacity-100 scale-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100 scale-100"
+    x-transition:leave-end="opacity-0 scale-75"
+    class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+    style="display: none;"
+    @click.stop
+  >
+
+    <!-- Close button -->
+    <div class="flex justify-end p-3">
+      <button
+        @click="activeRecipe = null"
+        class="text-gray-400 hover:text-gray-600 transition-colors rounded-full
+               p-1 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        aria-label="Close recipe"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Recipe image -->
+    <div class="px-6 pb-4">
+      <div class="aspect-[4/3] w-full overflow-hidden rounded-xl bg-amber-50 mb-4">
+        <img
+          :src="activeRecipe.image"
+          :alt="activeRecipe.title"
+          class="w-full h-full object-cover"
+        />
+      </div>
+
+      <!-- Title -->
+      <h2 class="font-serif text-2xl font-bold text-gray-900 text-center mb-2"
+          x-text="activeRecipe.title"></h2>
+
+      <!-- Tags -->
+      <div class="flex flex-wrap justify-center gap-1 mb-4"
+           x-show="activeRecipe.tags && activeRecipe.tags.length > 0">
+        <template x-for="tag in activeRecipe.tags" :key="tag">
+          <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full
+                       bg-amber-100 text-amber-800 border border-amber-200"
+                x-text="tag"></span>
+        </template>
+      </div>
+
+      <hr class="border-amber-200 my-4" />
+
+      <!-- Ingredients -->
+      <div class="mb-6">
+        <h3 class="font-serif text-lg font-semibold text-amber-800 mb-3">Ingredients</h3>
+        <ul class="space-y-1">
+          <template x-for="(ingredient, index) in activeRecipe.ingredients" :key="index">
+            <li class="flex items-start gap-2 text-gray-700 text-sm">
+              <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span>
+              <span x-text="ingredient"></span>
+            </li>
+          </template>
+        </ul>
+      </div>
+
+      <!-- Directions -->
+      <div class="mb-6">
+        <h3 class="font-serif text-lg font-semibold text-amber-800 mb-3">Directions</h3>
+        <ol class="space-y-3">
+          <template x-for="(step, index) in activeRecipe.directions" :key="index">
+            <li class="flex items-start gap-3 text-gray-700 text-sm">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-amber-100 text-amber-800
+                           font-bold text-xs flex items-center justify-center mt-0.5"
+                    x-text="index + 1"></span>
+              <span x-text="step"></span>
+            </li>
+          </template>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>

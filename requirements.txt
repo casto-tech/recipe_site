@@ -1,0 +1,11 @@
+Django>=5.0,<6.0
+psycopg2-binary>=2.9
+gunicorn>=21.0
+Pillow>=10.0
+django-environ>=0.11
+whitenoise>=6.6
+django-axes>=6.4
+django-csp>=3.8
+django-ratelimit>=4.1
+django-storages[azure]>=1.14
+azure-storage-blob>=12.19

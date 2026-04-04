@@ -1,0 +1,35 @@
+/* Recipe Site — custom styles */
+/* Tailwind handles the heavy lifting; these are small additions. */
+
+/* HTMX loading indicator */
+.htmx-indicator {
+    display: none;
+}
+.htmx-request .htmx-indicator {
+    display: inline;
+}
+.htmx-request.htmx-indicator {
+    display: inline;
+}
+
+/* Smooth card grid transitions when HTMX swaps content */
+#recipe-grid {
+    transition: opacity 0.15s ease;
+}
+.htmx-request #recipe-grid {
+    opacity: 0.5;
+}
+
+/* Parchment texture body */
+body {
+    background-color: #fdf6e3;
+}
+
+/* Card hover lift */
+.recipe-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.recipe-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
