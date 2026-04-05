@@ -1,106 +1,125 @@
 {% comment %}
-Card detail overlay — shown when activeRecipe is set by Alpine.js.
-Rendered inside the Alpine.js x-data scope from index.html.
-Uses x-show and x-transition for the flip/zoom animation.
+Recipe detail overlay — rendered inside the Alpine.js x-data scope from index.html.
+Uses x-show and x-transition for smooth animation.
 {% endcomment %}
 
-<!-- Overlay backdrop -->
+<!-- Backdrop -->
 <div
   x-show="activeRecipe !== null"
-  x-transition:enter="transition ease-out duration-300"
+  x-transition:enter="transition ease-out duration-200"
   x-transition:enter-start="opacity-0"
   x-transition:enter-end="opacity-100"
-  x-transition:leave="transition ease-in duration-200"
+  x-transition:leave="transition ease-in duration-150"
   x-transition:leave-start="opacity-100"
   x-transition:leave-end="opacity-0"
   @click.self="activeRecipe = null"
-  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+  @keydown.escape.window="activeRecipe = null"
+  class="fixed inset-0 z-50 bg-forest-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6"
   style="display: none;"
+  role="dialog"
+  aria-modal="true"
 >
 
-  <!-- Zoomed card -->
+  <!-- Modal panel -->
   <div
     x-show="activeRecipe !== null"
     x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0 scale-75"
-    x-transition:enter-end="opacity-100 scale-100"
+    x-transition:enter-start="opacity-0 translate-y-8 sm:translate-y-0 sm:scale-95"
+    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
     x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="opacity-100 scale-100"
-    x-transition:leave-end="opacity-0 scale-75"
-    class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl"
-    style="display: none;"
+    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+    x-transition:leave-end="opacity-0 translate-y-8 sm:translate-y-0 sm:scale-95"
     @click.stop
+    class="relative bg-cream w-full sm:max-w-2xl lg:max-w-3xl rounded-t-3xl sm:rounded-3xl
+           shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[88vh] flex flex-col"
+    style="display: none;"
   >
+    <!-- Hero image -->
+    <div class="relative w-full h-52 sm:h-64 flex-shrink-0 bg-parchment overflow-hidden">
+      <img
+        :src="activeRecipe.image"
+        :alt="activeRecipe.title"
+        class="w-full h-full object-cover"
+      />
+      <!-- Dark gradient for title readability -->
+      <div class="absolute inset-0 bg-gradient-to-t from-forest-900/80 via-forest-900/20 to-transparent"></div>
 
-    <!-- Close button -->
-    <div class="flex justify-end p-3">
+      <!-- Close button -->
       <button
         @click="activeRecipe = null"
-        class="text-gray-400 hover:text-gray-600 transition-colors rounded-full
-               p-1 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        class="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/20 hover:bg-white/40
+               backdrop-blur-sm flex items-center justify-center transition-colors duration-150
+               text-white focus:outline-none focus:ring-2 focus:ring-white/60"
         aria-label="Close recipe"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
-             viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M6 18L18 6M6 6l12 12" />
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
+
+      <!-- Title + tags on image -->
+      <div class="absolute bottom-0 left-0 right-0 p-5">
+        <div class="flex flex-wrap gap-1.5 mb-2"
+             x-show="activeRecipe.tags && activeRecipe.tags.length > 0">
+          <template x-for="tag in activeRecipe.tags" :key="tag">
+            <span class="inline-block px-2.5 py-0.5 text-xs font-medium rounded-full
+                         bg-forest-400/30 text-forest-100 border border-forest-300/30 backdrop-blur-sm"
+                  x-text="tag"></span>
+          </template>
+        </div>
+        <h2 class="font-serif text-2xl sm:text-3xl font-bold text-white leading-snug"
+            x-text="activeRecipe.title"></h2>
+      </div>
     </div>
 
-    <!-- Recipe image -->
-    <div class="px-6 pb-4">
-      <div class="aspect-[4/3] w-full overflow-hidden rounded-xl bg-amber-50 mb-4">
-        <img
-          :src="activeRecipe.image"
-          :alt="activeRecipe.title"
-          class="w-full h-full object-cover"
-        />
-      </div>
+    <!-- Scrollable body -->
+    <div class="overflow-y-auto flex-1 p-5 sm:p-7">
 
-      <!-- Title -->
-      <h2 class="font-serif text-2xl font-bold text-gray-900 text-center mb-2"
-          x-text="activeRecipe.title"></h2>
+      <!-- Two-column layout on sm+ screens -->
+      <div class="flex flex-col sm:flex-row gap-7 sm:gap-10">
 
-      <!-- Tags -->
-      <div class="flex flex-wrap justify-center gap-1 mb-4"
-           x-show="activeRecipe.tags && activeRecipe.tags.length > 0">
-        <template x-for="tag in activeRecipe.tags" :key="tag">
-          <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full
-                       bg-amber-100 text-amber-800 border border-amber-200"
-                x-text="tag"></span>
-        </template>
-      </div>
+        <!-- Ingredients -->
+        <div class="sm:w-2/5 flex-shrink-0">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-1 h-5 rounded-full bg-forest-500"></div>
+            <h3 class="font-serif text-lg font-semibold text-forest-900">Ingredients</h3>
+          </div>
+          <ul class="space-y-2.5">
+            <template x-for="(ingredient, i) in activeRecipe.ingredients" :key="i">
+              <li class="flex items-start gap-3 text-sm text-gray-700 leading-snug">
+                <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-forest-400 flex-shrink-0"></span>
+                <span x-text="ingredient"></span>
+              </li>
+            </template>
+          </ul>
+        </div>
 
-      <hr class="border-amber-200 my-4" />
+        <!-- Vertical divider (desktop only) -->
+        <div class="hidden sm:block w-px bg-stone flex-shrink-0"></div>
 
-      <!-- Ingredients -->
-      <div class="mb-6">
-        <h3 class="font-serif text-lg font-semibold text-amber-800 mb-3">Ingredients</h3>
-        <ul class="space-y-1">
-          <template x-for="(ingredient, index) in activeRecipe.ingredients" :key="index">
-            <li class="flex items-start gap-2 text-gray-700 text-sm">
-              <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0"></span>
-              <span x-text="ingredient"></span>
-            </li>
-          </template>
-        </ul>
-      </div>
+        <!-- Horizontal divider (mobile only) -->
+        <hr class="sm:hidden border-stone" />
 
-      <!-- Directions -->
-      <div class="mb-6">
-        <h3 class="font-serif text-lg font-semibold text-amber-800 mb-3">Directions</h3>
-        <ol class="space-y-3">
-          <template x-for="(step, index) in activeRecipe.directions" :key="index">
-            <li class="flex items-start gap-3 text-gray-700 text-sm">
-              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-amber-100 text-amber-800
-                           font-bold text-xs flex items-center justify-center mt-0.5"
-                    x-text="index + 1"></span>
-              <span x-text="step"></span>
-            </li>
-          </template>
-        </ol>
+        <!-- Directions -->
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-1 h-5 rounded-full bg-terracotta"></div>
+            <h3 class="font-serif text-lg font-semibold text-forest-900">Directions</h3>
+          </div>
+          <ol class="space-y-4">
+            <template x-for="(step, i) in activeRecipe.directions" :key="i">
+              <li class="flex items-start gap-3 text-sm text-gray-700 leading-relaxed">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full bg-forest-100 text-forest-700
+                             font-semibold text-xs flex items-center justify-center mt-0.5"
+                      x-text="i + 1"></span>
+                <span x-text="step"></span>
+              </li>
+            </template>
+          </ol>
+        </div>
+
       </div>
     </div>
   </div>
+
 </div>
