@@ -9,9 +9,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies into a custom prefix so we can copy them cleanly
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir --prefix=/install -r /tmp/requirements.txt
+# Install Python dependencies into a custom prefix so we can copy them cleanly.
+# INSTALL_DEV=true adds pytest, coverage, linting tools (used in docker-compose dev builds).
+ARG INSTALL_DEV=false
+COPY requirements.txt requirements-dev.txt /tmp/
+RUN if [ "$INSTALL_DEV" = "true" ]; then \
+        pip install --no-cache-dir --prefix=/install -r /tmp/requirements-dev.txt; \
+    else \
+        pip install --no-cache-dir --prefix=/install -r /tmp/requirements.txt; \
+    fi
 
 
 # ── Stage 2: Final Image ──────────────────────────────────────────────────────

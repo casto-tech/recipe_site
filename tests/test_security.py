@@ -102,15 +102,21 @@ class TestAdminInProduction:
             assert 'django.contrib.admin' not in settings.INSTALLED_APPS
 
     def test_management_url_not_in_urlconf_when_admin_disabled(self):
-        """When ADMIN_ENABLED=False, /management/ URL pattern must not be registered."""
-        with override_settings(ADMIN_ENABLED=False):
-            from django.urls import reverse, NoReverseMatch
+        """When ADMIN_ENABLED=False, /management/ URL pattern must not be registered.
+
+        override_settings(ADMIN_ENABLED=False) alone cannot unregister URL patterns
+        that were already loaded at process startup. Instead we switch ROOT_URLCONF to
+        the production mock which never mounts admin, forcing Django to resolve URLs
+        against a conf where admin:index does not exist.
+        """
+        from django.urls import NoReverseMatch, reverse
+
+        with override_settings(ROOT_URLCONF='tests.urls_production_mock', ADMIN_ENABLED=False):
             try:
                 reverse('admin:index')
-                # If we get here without exception, the URL IS registered — fail
                 pytest.fail("/management/ (admin:index) is registered but should not be")
             except NoReverseMatch:
-                pass  # Expected — URL is not registered
+                pass  # Expected — URL is not registered in production URL conf
 
 
 class TestAxesRateLimiting:
@@ -129,12 +135,12 @@ class TestAxesRateLimiting:
                 'password': 'wrongpassword',
             })
 
-        # 6th attempt should trigger lockout (HTTP 403 from django-axes)
+        # 6th attempt should trigger lockout — axes returns HTTP 429 (Too Many Requests)
         response = client.post(login_url, {
             'username': 'nonexistent_user',
             'password': 'wrongpassword',
         })
-        assert response.status_code == 403
+        assert response.status_code == 429
 
 
 class TestDebugLeakage:

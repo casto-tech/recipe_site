@@ -6,8 +6,34 @@ All user input is validated through Django forms before reaching views or manage
 import io
 
 import pytest
+from PIL import Image
 
 from recipes.forms import RecipeImageForm, SearchForm
+
+
+def _make_image_bytes(fmt='JPEG', size=(10, 10)):
+    """Generate a real, complete image using Pillow.
+
+    Returns raw bytes of a valid image in the requested format.
+    Pillow is already a project dependency so no extra installs needed.
+    """
+    buf = io.BytesIO()
+    img = Image.new('RGB', size, color=(200, 150, 100))
+    img.save(buf, format=fmt)
+    return buf.getvalue()
+
+
+def _upload_file(data, name, content_type='image/jpeg'):
+    from django.core.files.uploadedfile import InMemoryUploadedFile
+    f = io.BytesIO(data)
+    return InMemoryUploadedFile(
+        file=f,
+        field_name='image',
+        name=name,
+        content_type=content_type,
+        size=len(data),
+        charset=None,
+    )
 
 
 class TestSearchForm:
@@ -57,84 +83,62 @@ class TestSearchForm:
 
 
 class TestImageUploadValidation:
-    def _make_jpeg(self, size_bytes=None):
-        """Build a minimal valid JPEG byte stream."""
-        jpeg_header = (
-            b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00'
-        )
-        if size_bytes:
-            padding = b'\x00' * (size_bytes - len(jpeg_header))
-            return jpeg_header + padding
-        return jpeg_header + b'\xff\xd9'
-
-    def _upload_file(self, data, name):
-        from django.core.files.uploadedfile import InMemoryUploadedFile
-        f = io.BytesIO(data)
-        return InMemoryUploadedFile(
-            file=f,
-            field_name='image',
-            name=name,
-            content_type='image/jpeg',
-            size=len(data),
-            charset=None,
-        )
-
     def test_valid_jpeg_accepted(self):
         from recipes.utils import validate_image_upload
-        jpeg_data = self._make_jpeg()
-        f = self._upload_file(jpeg_data, 'photo.jpg')
+        f = _upload_file(_make_image_bytes('JPEG'), 'photo.jpg')
+        errors = validate_image_upload(f)
+        assert errors == []
+
+    def test_valid_png_accepted(self):
+        from recipes.utils import validate_image_upload
+        f = _upload_file(_make_image_bytes('PNG'), 'photo.png', 'image/png')
+        errors = validate_image_upload(f)
+        assert errors == []
+
+    def test_valid_webp_accepted(self):
+        from recipes.utils import validate_image_upload
+        f = _upload_file(_make_image_bytes('WEBP'), 'photo.webp', 'image/webp')
         errors = validate_image_upload(f)
         assert errors == []
 
     def test_invalid_extension_rejected(self):
         from recipes.utils import validate_image_upload
-        f = self._upload_file(b'not a real file', 'malware.exe')
+        f = _upload_file(b'not a real file', 'malware.exe')
         errors = validate_image_upload(f)
         assert len(errors) > 0
         assert any('.exe' in e for e in errors)
 
     def test_oversized_file_rejected(self):
         from recipes.utils import validate_image_upload
-        # 6 MB file — exceeds 5 MB limit
-        big_data = self._make_jpeg(6 * 1024 * 1024)
-        f = self._upload_file(big_data, 'big.jpg')
+        # Build a real JPEG then pad it past 5 MB
+        base = _make_image_bytes('JPEG')
+        big_data = base + b'\x00' * (6 * 1024 * 1024)
+        f = _upload_file(big_data, 'big.jpg')
         errors = validate_image_upload(f)
         assert any('5 MB' in e for e in errors)
 
     def test_file_at_exactly_5mb_boundary(self):
         from recipes.utils import validate_image_upload
-        # Exactly 5 MB should pass
-        exact_data = self._make_jpeg(5 * 1024 * 1024)
-        f = self._upload_file(exact_data, 'exact.jpg')
+        # Build a real image padded to exactly 5 MB — should not trigger size error.
+        # The padding makes it unreadable by Pillow so we only assert no size error.
+        base = _make_image_bytes('JPEG')
+        padding = b'\x00' * (5 * 1024 * 1024 - len(base))
+        exact_data = base + padding
+        f = _upload_file(exact_data, 'exact.jpg')
         errors = validate_image_upload(f)
-        # Only check that size error is not present (mime mismatch may occur for padding)
         assert not any('5 MB' in e for e in errors)
 
     def test_mime_type_mismatch_rejected(self):
         from recipes.utils import validate_image_upload
-        # PNG magic bytes but .jpg extension
-        png_header = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR'
-        f = self._upload_file(png_header, 'fake.jpg')
+        # A real PNG file uploaded with a .jpg extension — Pillow detects PNG, extension says JPEG
+        png_data = _make_image_bytes('PNG')
+        f = _upload_file(png_data, 'fake.jpg', 'image/jpeg')
         errors = validate_image_upload(f)
         assert len(errors) > 0
+        assert any('PNG' in e or 'JPEG' in e for e in errors)
 
-    def test_png_with_correct_extension_accepted(self):
+    def test_non_image_content_rejected(self):
         from recipes.utils import validate_image_upload
-        png_header = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR' + b'\x00' * 100
-        f = self._upload_file(png_header, 'image.png')
-        errors = validate_image_upload(f)
-        assert errors == []
-
-    def test_webp_with_correct_extension_accepted(self):
-        from recipes.utils import validate_image_upload
-        # Minimal valid WebP magic bytes
-        webp_data = b'RIFF\x24\x00\x00\x00WEBPVP8 '
-        f = self._upload_file(webp_data, 'image.webp')
-        errors = validate_image_upload(f)
-        assert errors == []
-
-    def test_non_image_content_with_webp_extension_rejected(self):
-        from recipes.utils import validate_image_upload
-        f = self._upload_file(b'this is not an image', 'fake.webp')
+        f = _upload_file(b'this is not an image at all', 'fake.webp')
         errors = validate_image_upload(f)
         assert len(errors) > 0

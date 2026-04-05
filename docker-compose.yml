@@ -29,6 +29,7 @@ services:
         DJANGO_SECRET_KEY: build-time-placeholder-not-used-at-runtime
         DJANGO_SETTINGS_MODULE: config.settings.development
         ADMIN_ENABLED: "True"
+        INSTALL_DEV: "true"
     # Run as root in local dev so the volume-mounted host files (owned by your
     # user) are readable. The Dockerfile's USER appuser applies in production
     # where no volume mount overrides /app.
