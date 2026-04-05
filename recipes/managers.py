@@ -4,7 +4,6 @@ Views never rewrite query logic; they call manager methods only.
 This is the DRY enforcement point for all database access patterns.
 """
 
-from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.db import models
 
 
@@ -16,29 +15,27 @@ class RecipeManager(models.Manager):
     def search(self, query=None, tag_slug=None):
         """Single method for all search and filter operations.
 
+        Uses icontains for partial/live search so typing a few characters
+        immediately filters to matching recipes. Matches against title,
+        tag names, and ingredients.
+
         Args:
-            query: Free-text search string (searches title and tag names).
+            query: Free-text search string (partial match supported).
             tag_slug: Exact tag slug to filter by.
 
         Returns:
-            Queryset ordered by relevance rank (when query provided)
-            or newest-first (no query).
+            Queryset ordered by newest-first.
         """
         qs = self.with_tags()
 
         if query:
-            search_vector = (
-                SearchVector('title', weight='A')
-                + SearchVector('tags__name', weight='B')
+            qs = qs.filter(
+                models.Q(title__icontains=query)
+                | models.Q(tags__name__icontains=query)
+                | models.Q(ingredients__icontains=query)
             )
-            search_query = SearchQuery(query)
-            qs = (
-                qs.annotate(rank=SearchRank(search_vector, search_query))
-                .filter(rank__gte=0.1)
-                .order_by('-rank')
-            )
-        else:
-            qs = qs.order_by('-created_at')
+
+        qs = qs.order_by('-created_at')
 
         if tag_slug:
             qs = qs.filter(tags__slug=tag_slug)

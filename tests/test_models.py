@@ -121,6 +121,16 @@ class TestRecipeManager:
         titles = [r.title for r in results]
         assert "Spaghetti Bolognese" in titles
 
+    def test_search_partial_query_matches(self, recipe_factory):
+        """Partial text (e.g. 'spag') must match recipes containing that substring."""
+        from recipes.models import Recipe
+        recipe_factory(title="Spaghetti Carbonara", slug="spaghetti-carbonara")
+        recipe_factory(title="Beef Burger", slug="beef-burger")
+        results = Recipe.objects.search(query="spag")
+        titles = [r.title for r in results]
+        assert "Spaghetti Carbonara" in titles
+        assert "Beef Burger" not in titles
+
     def test_search_by_tag_slug_filters_correctly(self, recipe_factory, tag_factory):
         from recipes.models import Recipe
         italian = tag_factory("Italian")
