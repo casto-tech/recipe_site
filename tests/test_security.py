@@ -22,9 +22,9 @@ class TestSecurityHeaders:
 
     def test_csp_middleware_in_production_settings(self):
         """CSP middleware must be registered in the production MIDDLEWARE list."""
-        import importlib
-        prod = importlib.import_module('config.settings.production')
-        assert 'csp.middleware.CSPMiddleware' in prod.MIDDLEWARE
+        from pathlib import Path
+        prod_path = Path(__file__).resolve().parent.parent / 'config' / 'settings' / 'production.py'
+        assert 'csp.middleware.CSPMiddleware' in prod_path.read_text()
 
 
 class TestDefaultAdminURL:
