@@ -87,6 +87,20 @@ class TestSearchView:
         assert response.status_code == 405
 
 
+class TestRateLimiting:
+    def test_search_rate_limited_after_30_requests(self, client):
+        """The 31st request to /search/ within one minute must return HTTP 403."""
+        from django.core.cache import cache
+        cache.clear()
+
+        for _ in range(30):
+            response = client.get('/search/')
+            assert response.status_code == 200
+
+        response = client.get('/search/')
+        assert response.status_code == 403
+
+
 class TestHealthView:
     def test_health_returns_200(self, client):
         response = client.get('/health/')

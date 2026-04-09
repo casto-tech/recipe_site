@@ -20,6 +20,12 @@ class TestSecurityHeaders:
         response = client.get('/')
         assert response.get('X-Content-Type-Options') == 'nosniff'
 
+    def test_csp_middleware_in_production_settings(self):
+        """CSP middleware must be registered in the production MIDDLEWARE list."""
+        import importlib
+        prod = importlib.import_module('config.settings.production')
+        assert 'csp.middleware.CSPMiddleware' in prod.MIDDLEWARE
+
 
 class TestDefaultAdminURL:
     """The default /admin/ path must never be mounted in any environment."""
@@ -59,7 +65,183 @@ class TestAdminInProduction:
     def test_management_returns_404_in_production(self, client):
         with override_settings(
             ADMIN_ENABLED=False,
-            INSTALLED_APPS=[
+            INSTALLED_APPS=[============================================== test session starts ==============================================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+django: version: 5.2.13, settings: config.settings.development (from env)
+rootdir: /app
+configfile: pyproject.toml
+plugins: cov-7.1.0, django-4.12.0
+collected 69 items                                                                                              
+
+tests/test_models.py .....................                                                                [ 30%]
+tests/test_security.py ..F.......F..                                                                      [ 49%]
+tests/test_views.py .................                                                                     [ 73%]
+tests/test_forms.py ..................                                                                    [100%]
+
+=================================================== FAILURES ====================================================
+___________________________ TestSecurityHeaders.test_csp_header_present_in_production ___________________________
+
+self = <tests.test_security.TestSecurityHeaders object at 0x7ffa85518a10>
+client = <django.test.client.Client object at 0x7ffa8416bef0>
+
+    def test_csp_header_present_in_production(self, client):
+        """Content-Security-Policy header must be set when CSP middleware is active."""
+        from django.conf import settings
+        prod_middleware = list(settings.MIDDLEWARE) + ['csp.middleware.CSPMiddleware']
+        with override_settings(
+            MIDDLEWARE=prod_middleware,
+            CSP_DEFAULT_SRC=("'self'",),
+        ):
+            response = client.get('/')
+>           assert response.has_header('Content-Security-Policy')
+E           assert False
+E            +  where False = has_header('Content-Security-Policy')
+E            +    where has_header = <HttpResponse status_code=200, "text/html; charset=utf-8">.has_header
+
+tests/test_security.py:32: AssertionError
+_________________________ TestAxesRateLimiting.test_admin_lockout_after_failed_attempts _________________________
+
+self = <tests.test_security.TestAxesRateLimiting object at 0x7ffa8551c890>
+client = <django.test.client.Client object at 0x7ffa84049010>
+
+    def test_admin_lockout_after_failed_attempts(self, client):
+        from django.conf import settings
+        if not getattr(settings, 'ADMIN_ENABLED', False):
+            pytest.skip("Axes lockout test requires ADMIN_ENABLED=True (development settings)")
+    
+        login_url = '/management/login/'
+    
+        for i in range(5):
+            client.post(login_url, {
+                'username': 'nonexistent_user',
+                'password': 'wrongpassword',
+            })
+    
+        # 6th attempt should trigger lockout — axes returns HTTP 403 (Forbidden)
+        response = client.post(login_url, {
+            'username': 'nonexistent_user',
+            'password': 'wrongpassword',
+        })
+>       assert response.status_code == 403
+E       assert 429 == 403
+E        +  where 429 = <HttpResponse status_code=429, "text/html; charset=utf-8">.status_code
+
+tests/test_security.py:154: AssertionError
+--------------------------------------------- Captured stderr call ----------------------------------------------
+{"time": "2026-04-09 04:29:30,477", "level": "WARNING", "logger": "axes.handlers.database", "message": "AXES: New login failure by {ip_address: "********************", path_info: "/management/login/"}. Created new record in the database."}
+{"time": "2026-04-09 04:29:30,770", "level": "WARNING", "logger": "axes.handlers.database", "message": "AXES: Repeated login failure by {ip_address: "********************", path_info: "/management/login/"}. Updated existing record in the database."}
+{"time": "2026-04-09 04:29:31,042", "level": "WARNING", "logger": "axes.handlers.database", "message": "AXES: Repeated login failure by {ip_address: "********************", path_info: "/management/login/"}. Updated existing record in the database."}
+{"time": "2026-04-09 04:29:31,358", "level": "WARNING", "logger": "axes.handlers.database", "message": "AXES: Repeated login failure by {ip_address: "********************", path_info: "/management/login/"}. Updated existing record in the database."}
+{"time": "2026-04-09 04:29:31,631", "level": "WARNING", "logger": "axes.handlers.database", "message": "AXES: Repeated login failure by {ip_address: "********************", path_info: "/management/login/"}. Updated existing record in the database."}
+{"time": "2026-04-09 04:29:31,633", "level": "WARNING", "logger": "axes.handlers.database", "message": "AXES: Locking out {ip_address: "********************", path_info: "/management/login/"} after repeated login failures."}
+{"time": "2026-04-09 04:29:31,640", "level": "WARNING", "logger": "django.request", "message": "Too Many Requests: /management/login/"}
+{"time": "2026-04-09 04:29:31,650", "level": "WARNING", "logger": "axes.handlers.database", "message": "AXES: Repeated login failure by {ip_address: "********************", path_info: "/management/login/"}. Updated existing record in the database."}
+{"time": "2026-04-09 04:29:31,651", "level": "WARNING", "logger": "axes.handlers.database", "message": "AXES: Locking out {ip_address: "********************", path_info: "/management/login/"} after repeated login failures."}
+{"time": "2026-04-09 04:29:31,658", "level": "WARNING", "logger": "django.request", "message": "Too Many Requests: /management/login/"}
+=============================================== warnings summary ================================================
+tests/test_security.py: 10 warnings
+tests/test_views.py: 17 warnings
+  /usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /app/staticfiles/
+    mw_instance = middleware(adapted_handler)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================================ tests coverage =================================================
+_______________________________ coverage: platform linux, python 3.12.13-final-0 ________________________________
+
+Name                                                 Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------------
+recipes/__init__.py                                      0      0   100%
+recipes/admin.py                                        27      6    78%   52, 57-67
+recipes/apps.py                                          4      0   100%
+recipes/forms.py                                        20      6    70%   43-48
+recipes/management/__init__.py                           0      0   100%
+recipes/management/commands/__init__.py                  0      0   100%
+recipes/management/commands/load_sample_recipes.py      24     24     0%   11-270
+recipes/managers.py                                     12      0   100%
+recipes/migrations/0001_initial.py                       8      0   100%
+recipes/migrations/__init__.py                           0      0   100%
+recipes/models.py                                       45      2    96%   62, 76
+recipes/urls.py                                          4      0   100%
+recipes/utils.py                                        35      0   100%
+recipes/views.py                                        22      0   100%
+----------------------------------------------------------------------------------
+TOTAL                                                  201     38    81%
+Required test coverage of 80% reached. Total coverage: 81.09%
+============================================ short test summary info ============================================
+FAILED tests/test_security.py::TestSecurityHeaders::test_csp_header_present_in_production - assert False
+FAILED tests/test_security.py::TestAxesRateLimiting::test_admin_lockout_after_failed_attempts - assert 429 == 403
+=================================== 2 failed, 67 passed, 27 warnings in 4.27s ===================================
+❯ TestSecurityHeadersTestSecurityHeaders
+❯ 
+❯ sudo docker-compose exec web pytest tests/
+============================================== test session starts ==============================================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+django: version: 5.2.13, settings: config.settings.development (from env)
+rootdir: /app
+configfile: pyproject.toml
+plugins: cov-7.1.0, django-4.12.0
+collected 69 items                                                                                              
+
+tests/test_models.py .....................                                                                [ 30%]
+tests/test_security.py ..F..........                                                                      [ 49%]
+tests/test_views.py .................                                                                     [ 73%]
+tests/test_forms.py ..................                                                                    [100%]
+
+=================================================== FAILURES ====================================================
+___________________________ TestSecurityHeaders.test_csp_header_present_in_production ___________________________
+
+self = <tests.test_security.TestSecurityHeaders object at 0x7f3be2918170>
+
+    def test_csp_header_present_in_production(self):
+        """Content-Security-Policy header must be set when CSP middleware is active."""
+        from django.conf import settings
+        from django.test import Client as TestClient
+        prod_middleware = list(settings.MIDDLEWARE) + ['csp.middleware.CSPMiddleware']
+        with override_settings(
+            MIDDLEWARE=prod_middleware,
+            CSP_DEFAULT_SRC=("'self'",),
+        ):
+            # A fresh client is required — override_settings does not rebuild the
+            # middleware stack for a client instantiated before the context manager.
+            response = TestClient().get('/')
+>           assert response.has_header('Content-Security-Policy')
+E           assert False
+E            +  where False = has_header('Content-Security-Policy')
+E            +    where has_header = <HttpResponse status_code=200, "text/html; charset=utf-8">.has_header
+
+tests/test_security.py:35: AssertionError
+=============================================== warnings summary ================================================
+tests/test_security.py: 10 warnings
+tests/test_views.py: 17 warnings
+  /usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /app/staticfiles/
+    mw_instance = middleware(adapted_handler)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================================ tests coverage =================================================
+_______________________________ coverage: platform linux, python 3.12.13-final-0 ________________________________
+
+Name                                                 Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------------
+recipes/__init__.py                                      0      0   100%
+recipes/admin.py                                        27      6    78%   52, 57-67
+recipes/apps.py                                          4      0   100%
+recipes/forms.py                                        20      6    70%   43-48
+recipes/management/__init__.py                           0      0   100%
+recipes/management/commands/__init__.py                  0      0   100%
+recipes/management/commands/load_sample_recipes.py      24     24     0%   11-270
+recipes/managers.py                                     12      0   100%
+recipes/migrations/0001_initial.py                       8      0   100%
+recipes/migrations/__init__.py                           0      0   100%
+recipes/models.py                                       45      2    96%   62, 76
+recipes/urls.py                                          4      0   100%
+recipes/utils.py                                        35      0   100%
+recipes/views.py                                        22      0   100%
+----------------------------------------------------------------------------------
+TOTAL                                                  201     38    81%
+Required test coverage of 80% reached. Total coverage: 81.09%
+============================================ short test summary info ============================================
+FAILED tests/test_security.py::TestSecurityHeaders::test_csp_header_present_in_production - assert False
+=================================== 1 failed, 68 passed, 27 warnings in 4.48s ===================================
                 app for app in [
                     'django.contrib.auth',
                     'django.contrib.contenttypes',
@@ -135,7 +317,7 @@ class TestAxesRateLimiting:
                 'password': 'wrongpassword',
             })
 
-        # 6th attempt should trigger lockout — axes returns HTTP 429 (Too Many Requests)
+        # 6th attempt should trigger lockout — axes 6.x returns HTTP 429 (Too Many Requests)
         response = client.post(login_url, {
             'username': 'nonexistent_user',
             'password': 'wrongpassword',
