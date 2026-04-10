@@ -4,6 +4,14 @@
 {% block title %}Recipe Repo{% endblock %}
 
 {% block content %}
+<style>
+  /* Make the native search-input clear (×) button white to match the magnifying glass */
+  #search-input::-webkit-search-cancel-button {
+    filter: brightness(0) invert(1);
+    opacity: 0.85;
+    cursor: pointer;
+  }
+</style>
 <div x-data="{ activeRecipe: null }">
 
   <!-- ── Site Header ────────────────────────────────────────────────────────── -->
