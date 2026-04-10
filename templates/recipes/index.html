@@ -29,151 +29,233 @@
 
   <!-- ── Hero Banner ────────────────────────────────────────────────────────── -->
   <section class="relative" style="background-color: #3d1208;">
-    <!-- Realistic rustic brick wall -->
+    <!-- Weathered old brick wall -->
     <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
+
         <!--
-          Bump-map surface filter.
-          feTurbulence generates fractal noise in user-space coordinates so every
-          brick at a different x/y position samples a unique slice of the noise
-          → each brick gets its own organic surface texture automatically.
-          feDiffuseLighting turns that into a lit bump map; arithmetic composite
-          multiplies the source colour by the light so colours stay brick-red
-          but gain light/shadow variation across the surface.
+          BRICK FILTER — 4-stage pipeline in userSpaceOnUse coordinates so every
+          brick samples a unique slice of each noise field by position:
+          1. Fine fractalNoise → feDiffuseLighting  — micro pores and grain
+          2. turbulence → feDisplacementMap          — worn, irregular edges
+          3. Low-freq fractalNoise → soft-light      — kiln blushes + age darkening
+          4. Vertically-biased fractalNoise → multiply — damp / water-stain streaks
         -->
-        <filter id="brick-tex" color-interpolation-filters="sRGB"
+        <filter id="brick-age" color-interpolation-filters="sRGB"
                 filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse"
-                x="0" y="0" width="4800" height="2080">
-          <feTurbulence type="fractalNoise" baseFrequency="0.038 0.055"
-                        numOctaves="6" seed="11" result="bumpNoise"/>
-          <feDiffuseLighting in="bumpNoise" lighting-color="#ffffff"
-                             surfaceScale="5" diffuseConstant="1.3" result="lit">
-            <feDistantLight azimuth="50" elevation="60"/>
+                x="-4" y="-4" width="4808" height="2088">
+          <feTurbulence type="fractalNoise" baseFrequency="0.065 0.090"
+                        numOctaves="6" seed="11" result="microBump"/>
+          <feDiffuseLighting in="microBump" lighting-color="#ffffff"
+                             surfaceScale="6" diffuseConstant="1.1" result="microLit">
+            <feDistantLight azimuth="50" elevation="55"/>
           </feDiffuseLighting>
-          <!-- multiply source colour by the light value -->
-          <feComposite in="SourceGraphic" in2="lit" operator="arithmetic"
-                       k1="1" k2="0" k3="0" k4="0" result="textured"/>
-          <!-- clip to source shape -->
-          <feComposite in="textured" in2="SourceGraphic" operator="in"/>
+          <feComposite in="SourceGraphic" in2="microLit" operator="arithmetic"
+                       k1="1" k2="0" k3="0" k4="0" result="microTex"/>
+
+          <feTurbulence type="turbulence" baseFrequency="0.22 0.30"
+                        numOctaves="2" seed="3" result="edgeNoise"/>
+          <feDisplacementMap in="microTex" in2="edgeNoise" scale="2.5"
+                             xChannelSelector="R" yChannelSelector="G"
+                             result="roughEdge"/>
+
+          <!-- Firing blushes: R=0.55t+0.22 centres near 0.5 so soft-light
+               both lightens (orange blush) and darkens (soot/age marks)     -->
+          <feTurbulence type="fractalNoise" baseFrequency="0.013 0.017"
+                        numOctaves="3" seed="5" result="blushNoise"/>
+          <feColorMatrix type="matrix"
+            values="0.55 0 0 0 0.22   0.10 0 0 0 0.04   0.03 0 0 0 0.01   0.45 0 0 0 0.05"
+            in="blushNoise" result="blushColor"/>
+          <feComposite in="blushColor" in2="roughEdge" operator="in" result="blushMasked"/>
+          <feBlend in="roughEdge" in2="blushMasked" mode="soft-light" result="colorVaried"/>
+
+          <!-- Water-stain streaks (high Y frequency = vertical drips)        -->
+          <feTurbulence type="fractalNoise" baseFrequency="0.008 0.055"
+                        numOctaves="3" seed="19" result="stainNoise"/>
+          <feColorMatrix type="matrix"
+            values="0 0 0 0 0.04   0 0 0 0 0.01   0 0 0 0 0.005   0.45 0 0 0 0"
+            in="stainNoise" result="stainColor"/>
+          <feComposite in="stainColor" in2="roughEdge" operator="in" result="stainMasked"/>
+          <feBlend in="colorVaried" in2="stainMasked" mode="multiply" result="stained"/>
+          <feComposite in="stained" in2="SourceGraphic" operator="in"/>
         </filter>
 
-        <!-- Sandy rough texture for mortar -->
-        <filter id="mortar-tex" color-interpolation-filters="sRGB"
+        <!-- MORTAR FILTER — rough sandy surface + thresholded hair cracks     -->
+        <filter id="mortar-age" color-interpolation-filters="sRGB"
                 filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse"
                 x="0" y="0" width="4800" height="2080">
-          <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="4"
-                        seed="4" result="mNoise"/>
-          <feDiffuseLighting in="mNoise" lighting-color="#ffffff"
-                             surfaceScale="2" diffuseConstant="1.0" result="mLit">
-            <feDistantLight azimuth="50" elevation="72"/>
+          <feTurbulence type="fractalNoise" baseFrequency="0.12 0.09"
+                        numOctaves="4" seed="4" result="mortarBump"/>
+          <feDiffuseLighting in="mortarBump" lighting-color="#ffffff"
+                             surfaceScale="2.5" diffuseConstant="0.9" result="mortarLit">
+            <feDistantLight azimuth="50" elevation="70"/>
           </feDiffuseLighting>
-          <feComposite in="SourceGraphic" in2="mLit" operator="arithmetic"
-                       k1="1" k2="0" k3="0" k4="0" result="mTex"/>
-          <feComposite in="mTex" in2="SourceGraphic" operator="in"/>
+          <feComposite in="SourceGraphic" in2="mortarLit" operator="arithmetic"
+                       k1="1" k2="0" k3="0" k4="0" result="mortarTex"/>
+          <!-- Threshold top-20% of noise → thin dark crack lines             -->
+          <feTurbulence type="fractalNoise" baseFrequency="0.30 0.40"
+                        numOctaves="3" seed="17" result="crackNoise"/>
+          <feColorMatrix type="matrix"
+            values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 5 -3.5"
+            in="crackNoise" result="crackMask"/>
+          <feFlood flood-color="#1e0e04" flood-opacity="0.55" result="crackFill"/>
+          <feComposite in="crackFill" in2="crackMask" operator="in" result="cracks"/>
+          <feBlend in="mortarTex" in2="cracks" mode="multiply" result="crackedMortar"/>
+          <feComposite in="crackedMortar" in2="SourceGraphic" operator="in"/>
         </filter>
 
         <!--
-          Tile: 240 × 104 px
-          Brick:  56 w × 22 h    Mortar: 4 px gap
-          Column period: 60 px   Row period: 26 px
-          4 columns × 4 rows = one full repeat with two alternating offsets.
-          Row 1 & 3: bricks at x = 2, 62, 122, 182   (no offset)
-          Row 2 & 4: bricks at x = 0(partial 28), 32, 92, 152, 212(partial 28)
+          TILE: 240 × 104 px  ·  Brick 56×22 px  ·  Mortar 4 px
+          Odd  rows y=2,54 : x=2,62,122,182
+          Even rows y=28,80: x=0(28),32,92,152,212(28)  [+30 offset]
+
+          Brick colour palette deliberately mixed: very dark nearly-black bricks
+          (#3e1408, #4e1c0c) simulate heavy soot/iron staining; medium bricks
+          (#7a2c18, #8c3420) are standard weathered terracotta.
         -->
         <pattern id="brickwall" x="0" y="0" width="240" height="104"
                  patternUnits="userSpaceOnUse">
 
-          <!-- ── MORTAR ─────────────────────────────────────────────────── -->
-          <rect width="240" height="104" fill="#9e7448" filter="url(#mortar-tex)"/>
+          <!-- MORTAR — dark aged sand -->
+          <rect width="240" height="104" fill="#6a4822" filter="url(#mortar-age)"/>
 
-          <!-- Cast shadow: dark strip at the top of each mortar joint
-               (shadow thrown by the brick face above) -->
-          <rect x="0" y="0"   width="240" height="1" fill="#110400" opacity="0.50"/>
-          <rect x="0" y="24"  width="240" height="2" fill="#110400" opacity="0.60"/>
-          <rect x="0" y="50"  width="240" height="2" fill="#110400" opacity="0.60"/>
-          <rect x="0" y="76"  width="240" height="2" fill="#110400" opacity="0.60"/>
-          <rect x="0" y="102" width="240" height="2" fill="#110400" opacity="0.55"/>
+          <!-- Joint depth: deep shadow line, faint centre, warm base fade -->
+          <rect x="0" y="24"  width="240" height="1" fill="#030000" opacity="0.92"/>
+          <rect x="0" y="25"  width="240" height="2" fill="#8c6030" opacity="0.20"/>
+          <rect x="0" y="27"  width="240" height="1" fill="#301808" opacity="0.45"/>
+          <rect x="0" y="50"  width="240" height="1" fill="#030000" opacity="0.92"/>
+          <rect x="0" y="51"  width="240" height="2" fill="#8c6030" opacity="0.18"/>
+          <rect x="0" y="53"  width="240" height="1" fill="#301808" opacity="0.45"/>
+          <rect x="0" y="76"  width="240" height="1" fill="#030000" opacity="0.92"/>
+          <rect x="0" y="77"  width="240" height="2" fill="#8c6030" opacity="0.20"/>
+          <rect x="0" y="79"  width="240" height="1" fill="#301808" opacity="0.45"/>
+          <rect x="0" y="102" width="240" height="1" fill="#030000" opacity="0.92"/>
+          <rect x="0" y="103" width="240" height="1" fill="#8c6030" opacity="0.16"/>
+          <rect x="0" y="0"   width="240" height="1" fill="#030000" opacity="0.70"/>
 
-          <!-- ── BRICKS — filtered as one group so texture is continuous ── -->
-          <g filter="url(#brick-tex)">
-            <!-- Row 1  y=2  h=22 -->
-            <rect x="2"   y="2"  width="56" height="22" fill="#8c3420"/>
+          <!-- Efflorescence — chalky salt deposits bleeding from mortar joints -->
+          <rect x="6"   y="26" width="22" height="1" fill="#ddd0a8" opacity="0.38"/>
+          <rect x="70"  y="26" width="14" height="1" fill="#e0d4b0" opacity="0.32"/>
+          <rect x="148" y="26" width="26" height="1" fill="#ddd0a8" opacity="0.36"/>
+          <rect x="24"  y="52" width="12" height="1" fill="#e0d4b0" opacity="0.30"/>
+          <rect x="98"  y="52" width="18" height="1" fill="#ddd0a8" opacity="0.36"/>
+          <rect x="184" y="52" width="16" height="1" fill="#e0d4b0" opacity="0.32"/>
+          <rect x="46"  y="78" width="16" height="1" fill="#ddd0a8" opacity="0.34"/>
+          <rect x="132" y="78" width="12" height="1" fill="#e0d4b0" opacity="0.30"/>
+          <rect x="204" y="78" width="22" height="1" fill="#ddd0a8" opacity="0.36"/>
+
+          <!-- BRICKS -->
+          <g filter="url(#brick-age)">
+            <!-- Row 1 y=2 — mix dark soot-stained and medium bricks -->
+            <rect x="2"   y="2"  width="56" height="22" fill="#5a2010"/>
             <rect x="62"  y="2"  width="56" height="22" fill="#7a2c18"/>
-            <rect x="122" y="2"  width="56" height="22" fill="#9a3c26"/>
-            <rect x="182" y="2"  width="56" height="22" fill="#862e1c"/>
-            <!-- Row 2  y=28  h=22  offset +30 -->
-            <rect x="0"   y="28" width="28" height="22" fill="#7a2c18"/>
-            <rect x="32"  y="28" width="56" height="22" fill="#963c28"/>
-            <rect x="92"  y="28" width="56" height="22" fill="#8a321e"/>
-            <rect x="152" y="28" width="56" height="22" fill="#7e2c1a"/>
-            <rect x="212" y="28" width="28" height="22" fill="#8c3420"/>
-            <!-- Row 3  y=54  h=22  (different hues from row 1) -->
-            <rect x="2"   y="54" width="56" height="22" fill="#7e2c1a"/>
-            <rect x="62"  y="54" width="56" height="22" fill="#963c28"/>
-            <rect x="122" y="54" width="56" height="22" fill="#862e1c"/>
-            <rect x="182" y="54" width="56" height="22" fill="#9a3c26"/>
-            <!-- Row 4  y=80  h=22  offset +30 -->
-            <rect x="0"   y="80" width="28" height="22" fill="#8c3420"/>
-            <rect x="32"  y="80" width="56" height="22" fill="#7a2c18"/>
-            <rect x="92"  y="80" width="56" height="22" fill="#903624"/>
-            <rect x="152" y="80" width="56" height="22" fill="#9a3c26"/>
-            <rect x="212" y="80" width="28" height="22" fill="#7e2c1a"/>
+            <rect x="122" y="2"  width="56" height="22" fill="#963c26"/>
+            <rect x="182" y="2"  width="56" height="22" fill="#4e1c0c"/>
+            <!-- Row 2 y=28 offset+30 -->
+            <rect x="0"   y="28" width="28" height="22" fill="#7e2e1c"/>
+            <rect x="32"  y="28" width="56" height="22" fill="#3e1408"/>
+            <rect x="92"  y="28" width="56" height="22" fill="#8c3420"/>
+            <rect x="152" y="28" width="56" height="22" fill="#6a2818"/>
+            <rect x="212" y="28" width="28" height="22" fill="#963c26"/>
+            <!-- Row 3 y=54 -->
+            <rect x="2"   y="54" width="56" height="22" fill="#963c26"/>
+            <rect x="62"  y="54" width="56" height="22" fill="#4e1c0c"/>
+            <rect x="122" y="54" width="56" height="22" fill="#7a2c18"/>
+            <rect x="182" y="54" width="56" height="22" fill="#5a2010"/>
+            <!-- Row 4 y=80 offset+30 -->
+            <rect x="0"   y="80" width="28" height="22" fill="#3e1408"/>
+            <rect x="32"  y="80" width="56" height="22" fill="#8c3420"/>
+            <rect x="92"  y="80" width="56" height="22" fill="#7e2e1c"/>
+            <rect x="152" y="80" width="56" height="22" fill="#963c26"/>
+            <rect x="212" y="80" width="28" height="22" fill="#6a2818"/>
           </g>
 
-          <!-- ── HIGHLIGHTS (top 3 px of each brick — light catches the lip) -->
-          <rect x="2"   y="2"  width="56" height="3" fill="#d05838" opacity="0.30"/>
-          <rect x="62"  y="2"  width="56" height="3" fill="#b04430" opacity="0.28"/>
-          <rect x="122" y="2"  width="56" height="3" fill="#d05838" opacity="0.30"/>
-          <rect x="182" y="2"  width="56" height="3" fill="#b03c28" opacity="0.28"/>
+          <!-- HIGHLIGHTS — top lip of each brick -->
+          <rect x="2"   y="2"  width="56" height="3" fill="#9c3c28" opacity="0.26"/>
+          <rect x="62"  y="2"  width="56" height="3" fill="#b44030" opacity="0.28"/>
+          <rect x="122" y="2"  width="56" height="3" fill="#c44e2c" opacity="0.26"/>
+          <rect x="182" y="2"  width="56" height="3" fill="#8a3020" opacity="0.24"/>
+          <rect x="0"   y="28" width="28" height="3" fill="#ac3c2a" opacity="0.26"/>
+          <rect x="32"  y="28" width="56" height="3" fill="#782c1a" opacity="0.20"/>
+          <rect x="92"  y="28" width="56" height="3" fill="#bc4a2e" opacity="0.26"/>
+          <rect x="152" y="28" width="56" height="3" fill="#9c3828" opacity="0.24"/>
+          <rect x="212" y="28" width="28" height="3" fill="#bc4a2e" opacity="0.26"/>
+          <rect x="2"   y="54" width="56" height="3" fill="#bc4a2e" opacity="0.26"/>
+          <rect x="62"  y="54" width="56" height="3" fill="#8a3020" opacity="0.24"/>
+          <rect x="122" y="54" width="56" height="3" fill="#b44030" opacity="0.28"/>
+          <rect x="182" y="54" width="56" height="3" fill="#9c3c28" opacity="0.26"/>
+          <rect x="0"   y="80" width="28" height="3" fill="#782c1a" opacity="0.20"/>
+          <rect x="32"  y="80" width="56" height="3" fill="#bc4a2e" opacity="0.26"/>
+          <rect x="92"  y="80" width="56" height="3" fill="#ac3c2a" opacity="0.26"/>
+          <rect x="152" y="80" width="56" height="3" fill="#c44e2c" opacity="0.26"/>
+          <rect x="212" y="80" width="28" height="3" fill="#9c3828" opacity="0.24"/>
 
-          <rect x="0"   y="28" width="28" height="3" fill="#b04430" opacity="0.28"/>
-          <rect x="32"  y="28" width="56" height="3" fill="#d05838" opacity="0.30"/>
-          <rect x="92"  y="28" width="56" height="3" fill="#c04c30" opacity="0.29"/>
-          <rect x="152" y="28" width="56" height="3" fill="#b03c28" opacity="0.28"/>
-          <rect x="212" y="28" width="28" height="3" fill="#d05838" opacity="0.30"/>
+          <!-- SHADOWS — bottom of each brick -->
+          <rect x="2"   y="20" width="56" height="4" fill="#010000" opacity="0.70"/>
+          <rect x="62"  y="20" width="56" height="4" fill="#010000" opacity="0.68"/>
+          <rect x="122" y="20" width="56" height="4" fill="#020000" opacity="0.70"/>
+          <rect x="182" y="20" width="56" height="4" fill="#010000" opacity="0.68"/>
+          <rect x="0"   y="46" width="28" height="4" fill="#010000" opacity="0.68"/>
+          <rect x="32"  y="46" width="56" height="4" fill="#020000" opacity="0.70"/>
+          <rect x="92"  y="46" width="56" height="4" fill="#010000" opacity="0.68"/>
+          <rect x="152" y="46" width="56" height="4" fill="#010000" opacity="0.70"/>
+          <rect x="212" y="46" width="28" height="4" fill="#020000" opacity="0.68"/>
+          <rect x="2"   y="72" width="56" height="4" fill="#010000" opacity="0.70"/>
+          <rect x="62"  y="72" width="56" height="4" fill="#020000" opacity="0.70"/>
+          <rect x="122" y="72" width="56" height="4" fill="#010000" opacity="0.68"/>
+          <rect x="182" y="72" width="56" height="4" fill="#020000" opacity="0.70"/>
+          <rect x="0"   y="98" width="28" height="4" fill="#010000" opacity="0.68"/>
+          <rect x="32"  y="98" width="56" height="4" fill="#010000" opacity="0.70"/>
+          <rect x="92"  y="98" width="56" height="4" fill="#020000" opacity="0.68"/>
+          <rect x="152" y="98" width="56" height="4" fill="#010000" opacity="0.70"/>
+          <rect x="212" y="98" width="28" height="4" fill="#020000" opacity="0.68"/>
 
-          <rect x="2"   y="54" width="56" height="3" fill="#b03c28" opacity="0.28"/>
-          <rect x="62"  y="54" width="56" height="3" fill="#d05838" opacity="0.30"/>
-          <rect x="122" y="54" width="56" height="3" fill="#b04430" opacity="0.28"/>
-          <rect x="182" y="54" width="56" height="3" fill="#d05838" opacity="0.30"/>
+          <!-- ── WEATHERING ───────────────────────────────────────────────── -->
 
-          <rect x="0"   y="80" width="28" height="3" fill="#d05838" opacity="0.30"/>
-          <rect x="32"  y="80" width="56" height="3" fill="#b04430" opacity="0.28"/>
-          <rect x="92"  y="80" width="56" height="3" fill="#c84e32" opacity="0.29"/>
-          <rect x="152" y="80" width="56" height="3" fill="#d05838" opacity="0.30"/>
-          <rect x="212" y="80" width="28" height="3" fill="#b03c28" opacity="0.28"/>
+          <!-- Heavy soot / iron-oxide staining on the darkest bricks -->
+          <rect x="184" y="4"  width="46" height="18" fill="#030000" opacity="0.45" rx="5"/>
+          <rect x="32"  y="30" width="44" height="17" fill="#030000" opacity="0.48" rx="5"/>
+          <rect x="2"   y="82" width="26" height="17" fill="#030000" opacity="0.42" rx="5"/>
+          <rect x="62"  y="56" width="44" height="17" fill="#030000" opacity="0.45" rx="5"/>
 
-          <!-- ── SHADOWS (bottom 4 px — recedes into mortar joint) ────── -->
-          <rect x="2"   y="20" width="56" height="4" fill="#0e0302" opacity="0.50"/>
-          <rect x="62"  y="20" width="56" height="4" fill="#0e0302" opacity="0.48"/>
-          <rect x="122" y="20" width="56" height="4" fill="#100402" opacity="0.50"/>
-          <rect x="182" y="20" width="56" height="4" fill="#0e0302" opacity="0.48"/>
+          <!-- General dark age-stains: soot, mineral, moisture -->
+          <rect x="8"   y="5"  width="34" height="18" fill="#080000" opacity="0.35" rx="8"/>
+          <rect x="75"  y="30" width="28" height="16" fill="#180200" opacity="0.28" rx="7"/>
+          <rect x="132" y="57" width="36" height="18" fill="#080000" opacity="0.35" rx="8"/>
+          <rect x="192" y="83" width="26" height="16" fill="#180200" opacity="0.28" rx="7"/>
+          <rect x="44"  y="56" width="24" height="14" fill="#080000" opacity="0.30" rx="6"/>
+          <rect x="158" y="29" width="22" height="14" fill="#180200" opacity="0.26" rx="6"/>
 
-          <rect x="0"   y="46" width="28" height="4" fill="#0e0302" opacity="0.48"/>
-          <rect x="32"  y="46" width="56" height="4" fill="#100402" opacity="0.50"/>
-          <rect x="92"  y="46" width="56" height="4" fill="#0e0302" opacity="0.48"/>
-          <rect x="152" y="46" width="56" height="4" fill="#0e0302" opacity="0.50"/>
-          <rect x="212" y="46" width="28" height="4" fill="#100402" opacity="0.48"/>
+          <!-- Water-stain drips at vertical mortar joints -->
+          <rect x="57"  y="3"  width="3"  height="21" fill="#040000" opacity="0.32" rx="1"/>
+          <rect x="119" y="29" width="3"  height="21" fill="#040000" opacity="0.28" rx="1"/>
+          <rect x="179" y="55" width="3"  height="21" fill="#040000" opacity="0.32" rx="1"/>
+          <rect x="87"  y="29" width="3"  height="21" fill="#040000" opacity="0.26" rx="1"/>
+          <rect x="27"  y="81" width="3"  height="21" fill="#040000" opacity="0.28" rx="1"/>
+          <rect x="147" y="55" width="3"  height="21" fill="#040000" opacity="0.26" rx="1"/>
 
-          <rect x="2"   y="72" width="56" height="4" fill="#0e0302" opacity="0.50"/>
-          <rect x="62"  y="72" width="56" height="4" fill="#100402" opacity="0.50"/>
-          <rect x="122" y="72" width="56" height="4" fill="#0e0302" opacity="0.48"/>
-          <rect x="182" y="72" width="56" height="4" fill="#100402" opacity="0.50"/>
+          <!-- Spalled / faded patches (surface worn, lighter interior exposed) -->
+          <rect x="20"  y="7"  width="22" height="12" fill="#9a6040" opacity="0.30" rx="5"/>
+          <rect x="98"  y="33" width="18" height="10" fill="#905838" opacity="0.26" rx="4"/>
+          <rect x="168" y="59" width="22" height="12" fill="#9a6040" opacity="0.30" rx="5"/>
+          <rect x="52"  y="83" width="18" height="10" fill="#905838" opacity="0.26" rx="4"/>
 
-          <rect x="0"   y="98" width="28" height="4" fill="#100402" opacity="0.48"/>
-          <rect x="32"  y="98" width="56" height="4" fill="#0e0302" opacity="0.50"/>
-          <rect x="92"  y="98" width="56" height="4" fill="#100402" opacity="0.50"/>
-          <rect x="152" y="98" width="56" height="4" fill="#0e0302" opacity="0.48"/>
-          <rect x="212" y="98" width="28" height="4" fill="#0e0302" opacity="0.50"/>
+          <!-- Chipped corners — bright fragment at worn brick edges -->
+          <rect x="57"  y="2"  width="5"  height="6"  fill="#c89c6c" opacity="0.55" rx="1"/>
+          <rect x="119" y="28" width="5"  height="6"  fill="#bc9060" opacity="0.50" rx="1"/>
+          <rect x="179" y="54" width="5"  height="6"  fill="#c89c6c" opacity="0.55" rx="1"/>
+          <rect x="29"  y="80" width="5"  height="6"  fill="#bc9060" opacity="0.50" rx="1"/>
 
-          <!-- ── WEATHERING: subtle dark patches simulating age & firing marks -->
-          <rect x="12"  y="5"  width="24" height="14" fill="#1a0402" opacity="0.14" rx="6"/>
-          <rect x="78"  y="30" width="20" height="13" fill="#3a0c06" opacity="0.12" rx="5"/>
-          <rect x="138" y="57" width="26" height="14" fill="#1a0402" opacity="0.14" rx="6"/>
-          <rect x="195" y="83" width="22" height="13" fill="#3a0c06" opacity="0.12" rx="5"/>
-          <rect x="50"  y="56" width="18" height="11" fill="#1a0402" opacity="0.10" rx="4"/>
-          <rect x="165" y="30" width="20" height="12" fill="#3a0c06" opacity="0.10" rx="4"/>
+          <!-- Algae / moss creep — damp green tinge along lower brick edges -->
+          <rect x="2"   y="18" width="56" height="6"  fill="#182814" opacity="0.18"/>
+          <rect x="122" y="18" width="56" height="6"  fill="#182814" opacity="0.15"/>
+          <rect x="32"  y="44" width="56" height="6"  fill="#182814" opacity="0.16"/>
+          <rect x="152" y="44" width="56" height="6"  fill="#182814" opacity="0.15"/>
+          <rect x="2"   y="70" width="56" height="6"  fill="#182814" opacity="0.18"/>
+          <rect x="182" y="70" width="56" height="6"  fill="#182814" opacity="0.15"/>
+          <rect x="32"  y="96" width="56" height="6"  fill="#182814" opacity="0.16"/>
+          <rect x="92"  y="96" width="56" height="6"  fill="#182814" opacity="0.15"/>
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill="url(#brickwall)"/>
