@@ -142,3 +142,32 @@ class TestImageUploadValidation:
         f = _upload_file(b'this is not an image at all', 'fake.webp')
         errors = validate_image_upload(f)
         assert len(errors) > 0
+
+
+class TestRecipeImageForm:
+    """Tests for RecipeImageForm.clean_image — exercises forms.py lines 43-48."""
+
+    def test_no_file_is_valid(self):
+        """Form is valid with no file (field not required); clean_image returns falsy."""
+        from recipes.forms import RecipeImageForm
+        form = RecipeImageForm(data={})
+        assert form.is_valid()
+
+    def test_valid_jpeg_accepted(self):
+        """clean_image passes through a valid JPEG without raising."""
+        from recipes.forms import RecipeImageForm
+        data = _make_image_bytes('JPEG')
+        upload = _upload_file(data, 'photo.jpg')
+        form = RecipeImageForm(files={'image': upload})
+        assert form.is_valid()
+
+    def test_mime_mismatch_raises_validation_error(self):
+        """clean_image raises ValidationError when content doesn't match extension."""
+        from recipes.forms import RecipeImageForm
+        # Valid PNG content but .jpg extension — passes Django's ImageField check
+        # but fails our validate_image_upload MIME verification.
+        png_data = _make_image_bytes('PNG')
+        upload = _upload_file(png_data, 'fake.jpg', 'image/jpeg')
+        form = RecipeImageForm(files={'image': upload})
+        assert not form.is_valid()
+        assert 'image' in form.errors

@@ -83,6 +83,25 @@ class TestRecipeModel:
         assert recipes[0] == r2  # newest first
         assert recipes[1] == r1
 
+    def test_slug_auto_generated_when_not_provided(self):
+        """Recipe.save() generates slug from title when no slug is supplied."""
+        from recipes.models import Recipe
+        recipe = Recipe.objects.create(
+            title="No Slug Here",
+            ingredients="1 egg",
+            directions="Fry.",
+        )
+        assert recipe.slug == "no-slug-here"
+
+    def test_get_image_url_with_uploaded_image(self, recipe_factory):
+        """get_image_url returns image.url when an uploaded file is present."""
+        from unittest.mock import MagicMock, PropertyMock, patch
+        recipe = recipe_factory()
+        mock_image = MagicMock()
+        mock_image.url = "/media/recipes/uploaded.jpg"
+        with patch.object(type(recipe), "image", new_callable=PropertyMock, return_value=mock_image):
+            assert recipe.get_image_url() == "/media/recipes/uploaded.jpg"
+
 
 class TestRecipeManager:
     def test_with_tags_returns_all_recipes(self, recipe_factory):
