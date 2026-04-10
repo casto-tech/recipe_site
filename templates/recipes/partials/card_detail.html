@@ -81,14 +81,16 @@ Uses x-show and x-transition for smooth animation.
         <!-- Ingredients -->
         <div class="sm:w-2/5 flex-shrink-0">
           <div class="flex items-center gap-2 mb-4">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flex-shrink-0">
-              <!-- 3D bowl: outer wall curve + rim ellipse + inner surface ellipse -->
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flex-shrink-0">
+              <!-- 3D bowl: outer wall curve -->
               <path d="M2 12 Q2 21 11 21 Q20 21 20 12" stroke="#63a054" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+              <!-- Spoon head inside bowl (drawn before rim so rim appears in front) -->
+              <ellipse cx="13.5" cy="15" rx="2.2" ry="1.2" stroke="#63a054" stroke-width="1.5" transform="rotate(-35 13.5 15)" fill="none"/>
+              <!-- Bowl rim (outer) + inner surface — drawn after spoon head to appear in front -->
               <ellipse cx="11" cy="12" rx="9" ry="3" stroke="#63a054" stroke-width="1.8" fill="none"/>
               <ellipse cx="11" cy="13" rx="6" ry="1.8" stroke="#63a054" stroke-width="1" fill="none"/>
-              <!-- Spoon: oval head + handle resting into bowl -->
-              <ellipse cx="18" cy="5" rx="1.8" ry="2.5" stroke="#63a054" stroke-width="1.8"/>
-              <line x1="17.5" y1="7.5" x2="14.5" y2="17" stroke="#63a054" stroke-width="1.8" stroke-linecap="round"/>
+              <!-- Spoon handle from top-right, stopping at rim edge -->
+              <line x1="21" y1="2" x2="16.5" y2="10.5" stroke="#63a054" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
             <h3 class="font-serif text-lg font-semibold text-forest-900">Ingredients</h3>
           </div>
@@ -111,7 +113,7 @@ Uses x-show and x-transition for smooth animation.
         <!-- Directions -->
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-4">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flex-shrink-0">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flex-shrink-0">
               <!-- 3D frying pan: outer rim ellipse + inner cooking surface + thick handle with end cap -->
               <ellipse cx="9" cy="14" rx="6" ry="4.5" stroke="#8c3420" stroke-width="1.8"/>
               <ellipse cx="9" cy="12.5" rx="4.5" ry="3" stroke="#8c3420" stroke-width="1"/>
