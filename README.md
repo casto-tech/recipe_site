@@ -18,7 +18,7 @@ Three steps from clone to running site:
 
 ```bash
 # 1. Clone and configure environment
-git clone <repo-url> recipe_site
+git clone https://github.com/casto-tech/recipe_site.git
 cd recipe_site
 cp .env.example .env
 # Edit .env — generate a real DJANGO_SECRET_KEY and DB_PASSWORD:

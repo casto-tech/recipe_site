@@ -28,7 +28,7 @@
   </header>
 
   <!-- ── Hero Banner ────────────────────────────────────────────────────────── -->
-  <section class="relative overflow-hidden" style="background-color: #3d1208;">
+  <section class="relative" style="background-color: #3d1208;">
     <!-- Realistic rustic brick wall -->
     <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -181,7 +181,8 @@
     <!-- Thin dark scrim — just enough to push text contrast without hiding the bricks -->
     <div class="absolute inset-0 bg-black/40"></div>
 
-    <div class="relative z-10 max-w-4xl mx-auto px-6 pt-16 pb-24 text-center">
+    <!-- Hero title — scrolls away normally -->
+    <div class="relative z-10 max-w-4xl mx-auto px-6 pt-16 pb-8 text-center">
       <p class="text-[#d4b896] text-xs tracking-[0.25em] uppercase font-medium mb-4">
         Home-cooked favourites
       </p>
@@ -190,18 +191,55 @@
         What are we<br/>
         <em class="text-[#e8d0b4] not-italic">cooking today?</em>
       </h1>
-      <p class="text-[#e8d0b4] text-base md:text-lg font-light max-w-lg mx-auto mb-12">
+      <p class="text-[#e8d0b4] text-base md:text-lg font-light max-w-lg mx-auto">
         Browse the collection, search by ingredient, or filter by category.
       </p>
+    </div>
 
-      <!-- Search bar inside hero -->
+    <!--
+      Floating search bar.
+      Uses position:fixed (not sticky) so it stays at the viewport top
+      even after the hero section has scrolled completely out of view.
+
+      How it works:
+      • pinAt  — the absolute document-Y of this wrapper, captured once on
+                 mount ($nextTick ensures layout is complete first).
+      • pinned — true when window.scrollY has reached or passed pinAt.
+      • When pinned the inner bar becomes fixed:top-0 and a same-height
+        spacer fills its space so the section height doesn't collapse.
+      • Appearance stays identical: the inputs keep their frosted-glass
+        bg-white/10 backdrop-blur-sm.  The outer wrapper gets a
+        semi-transparent dark blur so it reads against any page content
+        scrolling beneath it.
+    -->
+    <div x-data="{
+           pinned: false,
+           pinAt: 0,
+           init() {
+             this.$nextTick(() => {
+               this.pinAt = this.$el.getBoundingClientRect().top + window.scrollY;
+             });
+           }
+         }"
+         @scroll.window.passive="pinned = window.scrollY >= pinAt"
+         class="relative z-30 pb-16">
+      <!-- Spacer: same height as the bar, keeps the section from collapsing
+           when the bar goes fixed and leaves normal flow -->
+      <div x-show="pinned" style="height:72px" aria-hidden="true"></div>
+
+      <!-- Bar: fixed when pinned, static otherwise.  Frosted-glass wrapper
+           keeps the transparent look over whatever content is beneath it. -->
+      <div :class="pinned ? 'fixed top-0 left-0 right-0 z-50 py-3' : 'py-0'"
+           :style="pinned
+             ? 'background-color:rgba(40,12,4,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'
+             : ''">
       <form id="search-form"
             hx-get="{% url 'recipes:search' %}"
             hx-target="#recipe-grid"
             hx-swap="innerHTML"
             hx-trigger="keyup changed delay:250ms from:#search-input,
                          change from:#tag-filter"
-            class="relative max-w-2xl mx-auto"
+            class="relative max-w-2xl mx-auto px-6"
       >
         <div class="flex flex-col sm:flex-row gap-3">
           <!-- Search input -->
@@ -255,7 +293,8 @@
           Searching…
         </p>
       </form>
-    </div>
+      </div><!-- end bar -->
+    </div><!-- end floating wrapper -->
 
     <!-- Wave divider -->
     <div class="absolute bottom-0 left-0 right-0 z-10">
