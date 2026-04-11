@@ -72,28 +72,40 @@ Uses x-show and x-transition for smooth animation.
       </div>
     </div>
 
-    <!-- Scrollable body -->
-    <div class="overflow-y-auto flex-1 p-5 sm:p-7">
+    <!-- Section headers row — never scrolls -->
+    <div class="flex-shrink-0 flex flex-col sm:flex-row bg-cream border-b border-stone/40 px-5 sm:px-7 pt-5 sm:pt-6 pb-3 gap-3 sm:gap-10">
+      <!-- Ingredients header -->
+      <div class="sm:w-2/5 flex-shrink-0 flex items-center gap-2">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flex-shrink-0">
+          <path d="M2 12 Q2 21 11 21 Q20 21 20 12" stroke="#63a054" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+          <ellipse cx="13.5" cy="15" rx="2.2" ry="1.2" stroke="#63a054" stroke-width="1.5" transform="rotate(-35 13.5 15)" fill="none"/>
+          <ellipse cx="11" cy="12" rx="9" ry="3" stroke="#63a054" stroke-width="1.8" fill="none"/>
+          <ellipse cx="11" cy="13" rx="6" ry="1.8" stroke="#63a054" stroke-width="1" fill="none"/>
+          <line x1="21" y1="2" x2="16.5" y2="10.5" stroke="#63a054" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <h3 class="font-serif text-lg font-semibold text-forest-900">Ingredients</h3>
+      </div>
+      <!-- Directions header -->
+      <div class="flex-1 flex items-center gap-2">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flex-shrink-0">
+          <ellipse cx="9" cy="14" rx="6" ry="4.5" stroke="#8c3420" stroke-width="1.8"/>
+          <ellipse cx="9" cy="12.5" rx="4.5" ry="3" stroke="#8c3420" stroke-width="1"/>
+          <line x1="3" y1="14" x2="4.5" y2="12.5" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="15" y1="14" x2="13.5" y2="12.5" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M15 12 L21 9" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M15 13.5 L21 10.5" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M21 9 Q22.2 9.75 21 10.5" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+        </svg>
+        <h3 class="font-serif text-lg font-semibold text-forest-900">Directions</h3>
+      </div>
+    </div>
 
-      <!-- Two-column layout on sm+ screens -->
+    <!-- Scrollable lists body -->
+    <div class="overflow-y-auto flex-1 p-5 sm:p-7">
       <div class="flex flex-col sm:flex-row gap-7 sm:gap-10">
 
-        <!-- Ingredients -->
+        <!-- Ingredients list -->
         <div class="sm:w-2/5 flex-shrink-0">
-          <div class="flex items-center gap-2 mb-4">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flex-shrink-0">
-              <!-- 3D bowl: outer wall curve -->
-              <path d="M2 12 Q2 21 11 21 Q20 21 20 12" stroke="#63a054" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-              <!-- Spoon head inside bowl (drawn before rim so rim appears in front) -->
-              <ellipse cx="13.5" cy="15" rx="2.2" ry="1.2" stroke="#63a054" stroke-width="1.5" transform="rotate(-35 13.5 15)" fill="none"/>
-              <!-- Bowl rim (outer) + inner surface — drawn after spoon head to appear in front -->
-              <ellipse cx="11" cy="12" rx="9" ry="3" stroke="#63a054" stroke-width="1.8" fill="none"/>
-              <ellipse cx="11" cy="13" rx="6" ry="1.8" stroke="#63a054" stroke-width="1" fill="none"/>
-              <!-- Spoon handle from top-right, stopping at rim edge -->
-              <line x1="21" y1="2" x2="16.5" y2="10.5" stroke="#63a054" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            <h3 class="font-serif text-lg font-semibold text-forest-900">Ingredients</h3>
-          </div>
           <ul class="space-y-2.5">
             <template x-for="(ingredient, i) in activeRecipe.ingredients" :key="i">
               <li class="flex items-start gap-3 text-sm text-gray-700 leading-snug">
@@ -110,21 +122,8 @@ Uses x-show and x-transition for smooth animation.
         <!-- Horizontal divider (mobile only) -->
         <hr class="sm:hidden border-stone" />
 
-        <!-- Directions -->
+        <!-- Directions list -->
         <div class="flex-1">
-          <div class="flex items-center gap-2 mb-4">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="flex-shrink-0">
-              <!-- 3D frying pan: outer rim ellipse + inner cooking surface + thick handle with end cap -->
-              <ellipse cx="9" cy="14" rx="6" ry="4.5" stroke="#8c3420" stroke-width="1.8"/>
-              <ellipse cx="9" cy="12.5" rx="4.5" ry="3" stroke="#8c3420" stroke-width="1"/>
-              <line x1="3" y1="14" x2="4.5" y2="12.5" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round"/>
-              <line x1="15" y1="14" x2="13.5" y2="12.5" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M15 12 L21 9" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M15 13.5 L21 10.5" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M21 9 Q22.2 9.75 21 10.5" stroke="#8c3420" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-            </svg>
-            <h3 class="font-serif text-lg font-semibold text-forest-900">Directions</h3>
-          </div>
           <ol class="space-y-4">
             <template x-for="(step, i) in activeRecipe.directions" :key="i">
               <li class="flex items-start gap-3 text-sm text-gray-700 leading-relaxed">
