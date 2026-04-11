@@ -54,3 +54,6 @@ desktop.ini
 # ── Security scan artefacts ───────────────────────────────────────────────────
 bandit-report.json
 trivy-results.sarif
+
+# ── Azure artefacts ───────────────────────────────────────────────────
+az-variables.txt
