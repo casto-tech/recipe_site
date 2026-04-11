@@ -96,40 +96,51 @@ jobs:
           APP_NAME: ${{ secrets.CONTAINER_APP_NAME }}
           RG: ${{ secrets.RESOURCE_GROUP }}
           IMAGE: ${{ secrets.ACR_LOGIN_SERVER }}/recipesite:${{ github.sha }}
+          ACR_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          ACR_USER: ${{ secrets.ACR_USERNAME }}
+          ACR_PASS: ${{ secrets.ACR_PASSWORD }}
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
         run: |
           JOB_NAME="migrate-$(echo ${{ github.sha }} | cut -c1-7)"
+          APP="${APP_NAME//[$'\t\r\n ']}"
+          RGROUP="${RG//[$'\t\r\n ']}"
+          IMG="${IMAGE//[$'\t\r\n ']}"
+          ENV_ID=$(az containerapp show --name "$APP" --resource-group "$RGROUP" --query "properties.environmentId" -o tsv)
           az containerapp job create \
             --name "$JOB_NAME" \
-            --resource-group "${RG//[$'\t\r\n ']}" \
-            --environment "$(az containerapp show --name "${APP_NAME//[$'\t\r\n ']}" --resource-group "${RG//[$'\t\r\n ']}" --query "properties.environmentId" -o tsv)" \
-            --image "${IMAGE//[$'\t\r\n ']}" \
+            --resource-group "$RGROUP" \
+            --environment "$ENV_ID" \
+            --image "$IMG" \
             --replica-timeout 300 \
             --replica-retry-limit 1 \
             --trigger-type Manual \
-            --registry-server ${{ secrets.ACR_LOGIN_SERVER }} \
-            --registry-username ${{ secrets.ACR_USERNAME }} \
-            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --registry-server "$ACR_SERVER" \
+            --registry-username "$ACR_USER" \
+            --registry-password "$ACR_PASS" \
             --env-vars \
               DJANGO_SETTINGS_MODULE=config.settings.production \
-              DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}" \
-              DB_NAME="${{ secrets.DB_NAME }}" \
-              DB_USER="${{ secrets.DB_USER }}" \
-              DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-              DB_HOST="${{ secrets.DB_HOST }}" \
+              "DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY" \
+              "DB_NAME=$DB_NAME" \
+              "DB_USER=$DB_USER" \
+              "DB_PASSWORD=$DB_PASSWORD" \
+              "DB_HOST=$DB_HOST" \
               DB_PORT=5432 \
             --command "python" "manage.py" "migrate" "--noinput"
-          az containerapp job start --name "$JOB_NAME" --resource-group "${RG//[$'\t\r\n ']}"
-          # Wait for job to complete
+          az containerapp job start --name "$JOB_NAME" --resource-group "$RGROUP"
           for i in $(seq 1 30); do
-            STATUS=$(az containerapp job execution list --name "$JOB_NAME" --resource-group "${RG//[$'\t\r\n ']}" --query "[0].properties.status" -o tsv)
+            STATUS=$(az containerapp job execution list --name "$JOB_NAME" --resource-group "$RGROUP" --query "[0].properties.status" -o tsv)
             echo "Migration job status: $STATUS"
             if [ "$STATUS" = "Succeeded" ]; then
               echo "Migrations completed successfully."
-              az containerapp job delete --name "$JOB_NAME" --resource-group "${RG//[$'\t\r\n ']}" --yes
+              az containerapp job delete --name "$JOB_NAME" --resource-group "$RGROUP" --yes
               break
             elif [ "$STATUS" = "Failed" ]; then
               echo "Migration job failed."
-              az containerapp job delete --name "$JOB_NAME" --resource-group "${RG//[$'\t\r\n ']}" --yes
+              az containerapp job delete --name "$JOB_NAME" --resource-group "$RGROUP" --yes
               exit 1
             fi
             sleep 10
