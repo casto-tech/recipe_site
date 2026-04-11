@@ -90,13 +90,50 @@ jobs:
             --image "${IMAGE//[$'\t\r\n ']}"
 
       - name: Run database migrations
-        # Execute migrations inside the running container via az containerapp exec
-        # This ensures migrations run against the production database on every deploy
+        # Runs migrations as a one-off Container Apps job using the same image.
+        # az containerapp exec requires an interactive TTY (unavailable in CI).
+        env:
+          APP_NAME: ${{ secrets.CONTAINER_APP_NAME }}
+          RG: ${{ secrets.RESOURCE_GROUP }}
+          IMAGE: ${{ secrets.ACR_LOGIN_SERVER }}/recipesite:${{ github.sha }}
         run: |
-          az containerapp exec \
-            --name ${{ secrets.CONTAINER_APP_NAME }} \
-            --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --command "python manage.py migrate --noinput"
+          JOB_NAME="migrate-$(echo ${{ github.sha }} | cut -c1-7)"
+          az containerapp job create \
+            --name "$JOB_NAME" \
+            --resource-group "${RG//[$'\t\r\n ']}" \
+            --environment "$(az containerapp show --name "${APP_NAME//[$'\t\r\n ']}" --resource-group "${RG//[$'\t\r\n ']}" --query "properties.environmentId" -o tsv)" \
+            --image "${IMAGE//[$'\t\r\n ']}" \
+            --replica-timeout 300 \
+            --replica-retry-limit 1 \
+            --trigger-type Manual \
+            --registry-server ${{ secrets.ACR_LOGIN_SERVER }} \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --env-vars \
+              DJANGO_SETTINGS_MODULE=config.settings.production \
+              DJANGO_SECRET_KEY="${{ secrets.DJANGO_SECRET_KEY }}" \
+              DB_NAME="${{ secrets.DB_NAME }}" \
+              DB_USER="${{ secrets.DB_USER }}" \
+              DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+              DB_HOST="${{ secrets.DB_HOST }}" \
+              DB_PORT=5432 \
+            --command "python" "manage.py" "migrate" "--noinput"
+          az containerapp job start --name "$JOB_NAME" --resource-group "${RG//[$'\t\r\n ']}"
+          # Wait for job to complete
+          for i in $(seq 1 30); do
+            STATUS=$(az containerapp job execution list --name "$JOB_NAME" --resource-group "${RG//[$'\t\r\n ']}" --query "[0].properties.status" -o tsv)
+            echo "Migration job status: $STATUS"
+            if [ "$STATUS" = "Succeeded" ]; then
+              echo "Migrations completed successfully."
+              az containerapp job delete --name "$JOB_NAME" --resource-group "${RG//[$'\t\r\n ']}" --yes
+              break
+            elif [ "$STATUS" = "Failed" ]; then
+              echo "Migration job failed."
+              az containerapp job delete --name "$JOB_NAME" --resource-group "${RG//[$'\t\r\n ']}" --yes
+              exit 1
+            fi
+            sleep 10
+          done
 
       - name: Smoke test — verify health endpoint
         # Poll the health endpoint for up to 2 minutes after deploy.
