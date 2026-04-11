@@ -81,9 +81,9 @@ jobs:
       - name: Deploy new revision to Azure Container Apps
         run: |
           az containerapp update \
-            --name ${{ secrets.CONTAINER_APP_NAME }} \
-            --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --image ${{ needs.build-and-push.outputs.image-tag }}
+            --name "${{ secrets.CONTAINER_APP_NAME }}" \
+            --resource-group "${{ secrets.RESOURCE_GROUP }}" \
+            --image "${{ secrets.ACR_LOGIN_SERVER }}/recipesite:${{ github.sha }}"
 
       - name: Run database migrations
         # Execute migrations inside the running container via az containerapp exec
