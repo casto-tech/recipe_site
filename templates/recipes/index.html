@@ -10,8 +10,8 @@
 </style>
 <div x-data="{ activeRecipe: null }">
 
-  <!-- ── Site Header ────────────────────────────────────────────────────────── -->
-  <header class="text-white" style="background-color: #3d1208;">
+  <!-- ── Site Header — absolute so it overlays the top of the hero brick wall -->
+  <header class="absolute top-0 left-0 right-0 z-20 text-white">
     <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <!-- Fork & knife icon -->
@@ -34,7 +34,7 @@
   </header>
 
   <!-- ── Hero Banner ────────────────────────────────────────────────────────── -->
-  <section class="relative" style="background-color: #3d1208;">
+  <section class="relative" style="background-color: #3d1208; padding-top: 72px;">
     <!-- Weathered old brick wall -->
     <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
