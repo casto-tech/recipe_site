@@ -125,27 +125,30 @@ jobs:
             -t recipesite:scan \
             .
 
-      # Table scan — prints findings to the CI log so failures are visible.
-      # exit-code 0 here so this step never blocks; the SARIF scan below enforces the gate.
-      - name: Trivy scan (table — for log visibility)
+      # Table scan — this is the gate. Prints findings to the CI log AND fails
+      # the job on any fixable HIGH/CRITICAL CVE. Table format correctly applies
+      # ignore-unfixed; SARIF mode does not (it builds with all severities first).
+      - name: Trivy scan (table — security gate)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: recipesite:scan
           format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: "0"
+          exit-code: "1"
 
-      # SARIF scan — this is the gate: fails the job on any fixable HIGH/CRITICAL CVE.
-      - name: Trivy scan (SARIF — security gate)
+      # SARIF scan — reporting only, never fails the job. Uploads results to
+      # the GitHub Security tab for tracking even when the gate above passes.
+      - name: Trivy scan (SARIF — reporting only)
         uses: aquasecurity/trivy-action@master
+        if: always()
         with:
           image-ref: recipesite:scan
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
-          exit-code: "1"
           ignore-unfixed: true
+          exit-code: "0"
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
