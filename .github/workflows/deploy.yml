@@ -79,11 +79,15 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy new revision to Azure Container Apps
+        env:
+          APP_NAME: ${{ secrets.CONTAINER_APP_NAME }}
+          RG: ${{ secrets.RESOURCE_GROUP }}
+          IMAGE: ${{ secrets.ACR_LOGIN_SERVER }}/recipesite:${{ github.sha }}
         run: |
           az containerapp update \
-            --name "${{ secrets.CONTAINER_APP_NAME }}" \
-            --resource-group "${{ secrets.RESOURCE_GROUP }}" \
-            --image "${{ secrets.ACR_LOGIN_SERVER }}/recipesite:${{ github.sha }}"
+            --name "${APP_NAME//[$'\t\r\n ']}" \
+            --resource-group "${RG//[$'\t\r\n ']}" \
+            --image "${IMAGE//[$'\t\r\n ']}"
 
       - name: Run database migrations
         # Execute migrations inside the running container via az containerapp exec
