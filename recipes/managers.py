@@ -10,7 +10,7 @@ from django.db import models
 class RecipeManager(models.Manager):
     def with_tags(self):
         """Base queryset used by all views — always prefetch tags."""
-        return self.prefetch_related('tags')
+        return self.prefetch_related("tags")
 
     def search(self, query=None, tag_slug=None):
         """Single method for all search and filter operations.
@@ -35,7 +35,7 @@ class RecipeManager(models.Manager):
                 | models.Q(ingredients__icontains=query)
             )
 
-        qs = qs.order_by('-created_at')
+        qs = qs.order_by("-created_at")
 
         if tag_slug:
             qs = qs.filter(tags__slug=tag_slug)

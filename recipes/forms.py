@@ -26,11 +26,9 @@ class SearchForm(forms.Form):
 
     def clean_tag(self):
         """Validate tag slug — only lowercase alphanumeric and hyphens allowed."""
-        tag = self.cleaned_data.get('tag', '')
-        if tag and not re.fullmatch(r'[a-z0-9\-]+', tag):
-            raise forms.ValidationError(
-                "Tag filter must contain only lowercase letters, digits, and hyphens."
-            )
+        tag = self.cleaned_data.get("tag", "")
+        if tag and not re.fullmatch(r"[a-z0-9\-]+", tag):
+            raise forms.ValidationError("Tag filter must contain only lowercase letters, digits, and hyphens.")
         return tag
 
 
@@ -40,7 +38,7 @@ class RecipeImageForm(forms.Form):
     image = forms.ImageField(required=False)
 
     def clean_image(self):
-        image = self.cleaned_data.get('image')
+        image = self.cleaned_data.get("image")
         if image:
             errors = validate_image_upload(image)
             if errors:

@@ -16,6 +16,7 @@ class TestRecipeAdminMethods:
         from django.contrib.admin.sites import AdminSite
         from recipes.admin import RecipeAdmin
         from recipes.models import Recipe
+
         return RecipeAdmin(Recipe, AdminSite())
 
     # ── tag_list ──────────────────────────────────────────────────────────────

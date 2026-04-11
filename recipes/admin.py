@@ -13,44 +13,54 @@ from .models import Recipe, Tag
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug')
-    search_fields = ('name',)
-    prepopulated_fields = {'slug': ('name',)}
+    list_display = ("name", "slug")
+    search_fields = ("name",)
+    prepopulated_fields = {"slug": ("name",)}
 
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'tag_list', 'created_at', 'updated_at')
-    list_filter = ('tags',)
-    search_fields = ('title', 'ingredients', 'directions')
-    prepopulated_fields = {'slug': ('title',)}
-    filter_horizontal = ('tags',)
-    readonly_fields = ('image_preview', 'created_at', 'updated_at')
+    list_display = ("title", "tag_list", "created_at", "updated_at")
+    list_filter = ("tags",)
+    search_fields = ("title", "ingredients", "directions")
+    prepopulated_fields = {"slug": ("title",)}
+    filter_horizontal = ("tags",)
+    readonly_fields = ("image_preview", "created_at", "updated_at")
 
     fieldsets = (
-        ('Recipe Details', {
-            'fields': ('title', 'slug', 'tags'),
-        }),
-        ('Image', {
-            'fields': ('image_preview', 'image', 'image_url'),
-            'description': (
-                'Upload an image for this recipe. '
-                'The preview shows the currently saved image.'
-            ),
-        }),
-        ('Content', {
-            'fields': ('ingredients', 'directions'),
-        }),
-        ('Metadata', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',),
-        }),
+        (
+            "Recipe Details",
+            {
+                "fields": ("title", "slug", "tags"),
+            },
+        ),
+        (
+            "Image",
+            {
+                "fields": ("image_preview", "image", "image_url"),
+                "description": ("Upload an image for this recipe. " "The preview shows the currently saved image."),
+            },
+        ),
+        (
+            "Content",
+            {
+                "fields": ("ingredients", "directions"),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def tag_list(self, obj):
         """Display comma-separated tag names in the list view."""
-        return ', '.join(t.name for t in obj.tags.all()) or '—'
-    tag_list.short_description = 'Tags'
+        return ", ".join(t.name for t in obj.tags.all()) or "—"
+
+    tag_list.short_description = "Tags"
 
     def image_preview(self, obj):
         """Render a thumbnail of the current image in the edit form."""
@@ -64,5 +74,6 @@ class RecipeAdmin(admin.ModelAdmin):
                 '<img src="{}" style="max-height: 150px; border-radius: 6px;" />',
                 obj.image_url,
             )
-        return '(No image uploaded)'
-    image_preview.short_description = 'Current Image'
+        return "(No image uploaded)"
+
+    image_preview.short_description = "Current Image"

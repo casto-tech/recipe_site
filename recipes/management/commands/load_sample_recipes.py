@@ -243,7 +243,7 @@ class Command(BaseCommand):
         for tag_name in SAMPLE_TAGS:
             tag, created = Tag.objects.get_or_create(
                 name=tag_name,
-                defaults={'slug': slugify(tag_name)},
+                defaults={"slug": slugify(tag_name)},
             )
             tag_objects[tag_name] = tag
             if created:
@@ -267,6 +267,6 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(f"  Already exists: {data['title']}")
 
-        self.stdout.write(self.style.SUCCESS(
-            f"\nDone. {len(SAMPLE_RECIPES)} recipes and {len(SAMPLE_TAGS)} tags loaded."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(f"\nDone. {len(SAMPLE_RECIPES)} recipes and {len(SAMPLE_TAGS)} tags loaded.")
+        )

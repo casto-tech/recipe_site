@@ -13,21 +13,25 @@ from django_ratelimit.decorators import ratelimit
 from .forms import SearchForm
 from .models import Recipe, Tag
 
-logger = logging.getLogger('recipes')
+logger = logging.getLogger("recipes")
 
 
 def index(request):
     """Main page — renders all recipe cards in newest-first order."""
     recipes = Recipe.objects.with_tags()
     tags = Tag.objects.all()
-    return render(request, 'recipes/index.html', {
-        'recipes': recipes,
-        'tags': tags,
-    })
+    return render(
+        request,
+        "recipes/index.html",
+        {
+            "recipes": recipes,
+            "tags": tags,
+        },
+    )
 
 
 @require_GET
-@ratelimit(key='ip', rate='30/m', block=True)
+@ratelimit(key="ip", rate="30/m", block=True)
 def search(request):
     """HTMX search endpoint — returns the recipe_grid partial only.
 
@@ -40,13 +44,13 @@ def search(request):
     form = SearchForm(request.GET)
     if form.is_valid():
         recipes = Recipe.objects.search(
-            query=form.cleaned_data.get('q'),
-            tag_slug=form.cleaned_data.get('tag'),
+            query=form.cleaned_data.get("q"),
+            tag_slug=form.cleaned_data.get("tag"),
         )
     else:
-        recipes = Recipe.objects.with_tags().order_by('-created_at')
+        recipes = Recipe.objects.with_tags().order_by("-created_at")
 
-    return render(request, 'recipes/partials/recipe_grid.html', {'recipes': recipes})
+    return render(request, "recipes/partials/recipe_grid.html", {"recipes": recipes})
 
 
 def health(request):
@@ -55,4 +59,4 @@ def health(request):
     Returns HTTP 200 with {"status": "ok"}.
     No database query performed — this endpoint must be fast and always available.
     """
-    return JsonResponse({'status': 'ok'})
+    return JsonResponse({"status": "ok"})

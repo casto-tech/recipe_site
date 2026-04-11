@@ -15,4 +15,4 @@ ADMIN_SITE_TITLE = "Recipe Book Dev"
 ADMIN_INDEX_TITLE = "Local Development Only — Not Available in Production"
 
 # ── Email ─────────────────────────────────────────────────────────────────────
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

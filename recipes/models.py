@@ -16,7 +16,7 @@ class Tag(models.Model):
     slug = models.SlugField(unique=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ["name"]
 
     def __str__(self):
         return self.name
@@ -30,18 +30,14 @@ class Tag(models.Model):
 class Recipe(models.Model):
     title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
-    image = models.ImageField(upload_to='recipes/', blank=True, null=True)
+    image = models.ImageField(upload_to="recipes/", blank=True, null=True)
     image_url = models.URLField(
         blank=True,
         help_text="Developer-controlled fallback URL — never rendered from user input.",
     )
     tags = models.ManyToManyField(Tag, blank=True)
-    ingredients = models.TextField(
-        help_text="Enter one ingredient per line. Example: 2 cups flour"
-    )
-    directions = models.TextField(
-        help_text="Enter one step per line. These will be displayed as a numbered list."
-    )
+    ingredients = models.TextField(help_text="Enter one ingredient per line. Example: 2 cups flour")
+    directions = models.TextField(help_text="Enter one step per line. These will be displayed as a numbered list.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     search_vector = SearchVectorField(null=True, blank=True)
@@ -49,9 +45,9 @@ class Recipe(models.Model):
     objects = RecipeManager()
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            GinIndex(fields=['search_vector']),
+            GinIndex(fields=["search_vector"]),
         ]
 
     def __str__(self):
@@ -74,4 +70,4 @@ class Recipe(models.Model):
         """Return the best available image URL for display."""
         if self.image:
             return self.image.url
-        return self.image_url or ''
+        return self.image_url or ""

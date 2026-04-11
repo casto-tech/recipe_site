@@ -12,7 +12,7 @@ ADMIN_ENABLED = False
 # Remove django.contrib.admin from INSTALLED_APPS — eliminates the attack
 # surface entirely. No admin tables loaded, no admin views registered,
 # no admin URL can be mounted, all admin paths return HTTP 404.
-INSTALLED_APPS = [app for app in INSTALLED_APPS if app != 'django.contrib.admin']  # noqa: F405
+INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "django.contrib.admin"]  # noqa: F405
 
 # ── HTTPS / Cookie Security ───────────────────────────────────────────────────
 SECURE_SSL_REDIRECT = True
@@ -22,17 +22,15 @@ SESSION_COOKIE_AGE = 3600
 CSRF_COOKIE_SECURE = True
 
 # ── HSTS ──────────────────────────────────────────────────────────────────────
-SECURE_HSTS_SECONDS = 31536000          # 1 year
+SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 # ── Content Security Policy (django-csp) ─────────────────────────────────────
-MIDDLEWARE = MIDDLEWARE + ['csp.middleware.CSPMiddleware']  # noqa: F405
+MIDDLEWARE = MIDDLEWARE + ["csp.middleware.CSPMiddleware"]  # noqa: F405
 
 _azure_blob_domain = (
-    f"https://{AZURE_ACCOUNT_NAME}.blob.core.windows.net"  # noqa: F405
-    if AZURE_ACCOUNT_NAME  # noqa: F405
-    else ''
+    f"https://{AZURE_ACCOUNT_NAME}.blob.core.windows.net" if AZURE_ACCOUNT_NAME else ""  # noqa: F405  # noqa: F405
 )
 
 CSP_DEFAULT_SRC = ("'self'",)
@@ -44,7 +42,7 @@ CSP_SCRIPT_SRC = (
 )
 CSP_STYLE_SRC = (
     "'self'",
-    "'unsafe-inline'",   # Required by Tailwind CDN play
+    "'unsafe-inline'",  # Required by Tailwind CDN play
     "https://cdn.tailwindcss.com",
 )
 _img_src = ["'self'", "data:", "https://picsum.photos"]

@@ -7,17 +7,17 @@ import logging
 
 from PIL import Image, UnidentifiedImageError
 
-logger = logging.getLogger('recipes')
+logger = logging.getLogger("recipes")
 
-ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
 
 # Map extension to Pillow format string
 EXTENSION_TO_PILLOW_FORMAT = {
-    '.jpg': 'JPEG',
-    '.jpeg': 'JPEG',
-    '.png': 'PNG',
-    '.webp': 'WEBP',
+    ".jpg": "JPEG",
+    ".jpeg": "JPEG",
+    ".png": "PNG",
+    ".webp": "WEBP",
 }
 
 
@@ -39,13 +39,12 @@ def validate_image_upload(file):
 
     # Extension check
     name = file.name.lower()
-    dot_idx = name.rfind('.')
-    ext = name[dot_idx:] if dot_idx != -1 else ''
+    dot_idx = name.rfind(".")
+    ext = name[dot_idx:] if dot_idx != -1 else ""
 
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         errors.append(
-            f"Unsupported file type '{ext}'. "
-            f"Allowed types: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}"
+            f"Unsupported file type '{ext}'. " f"Allowed types: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}"
         )
         return errors  # No point checking content if extension is wrong
 
@@ -55,9 +54,7 @@ def validate_image_upload(file):
     file.seek(0)
 
     if size > MAX_IMAGE_SIZE_BYTES:
-        errors.append(
-            f"File size {size / (1024 * 1024):.1f} MB exceeds the 5 MB maximum."
-        )
+        errors.append(f"File size {size / (1024 * 1024):.1f} MB exceeds the 5 MB maximum.")
 
     # MIME type check via Pillow — detects actual format from file content.
     # OSError covers truncated/corrupt files; UnidentifiedImageError covers
@@ -70,9 +67,7 @@ def validate_image_upload(file):
         img = Image.open(file)  # Re-open after verify (verify closes the image)
         detected_format = img.format  # e.g. 'JPEG', 'PNG', 'WEBP'
     except (UnidentifiedImageError, OSError):
-        errors.append(
-            "File content does not appear to be a valid image."
-        )
+        errors.append("File content does not appear to be a valid image.")
         file.seek(0)
         return errors
     finally:
