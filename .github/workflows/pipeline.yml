@@ -20,6 +20,10 @@ jobs:
   security:
     name: Security — SAST, CVE & Image Scan
     needs: ci
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     uses: ./.github/workflows/security.yml
     secrets: inherit
 
