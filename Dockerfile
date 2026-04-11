@@ -3,8 +3,10 @@
 # Compilers and dev headers never reach the final image.
 FROM python:3.12-slim AS builder
 
-# Install system dependencies needed to compile Python packages (psycopg2)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies needed to compile Python packages (psycopg2).
+# apt-get upgrade applies available OS security patches so fixable CVEs don't
+# block Trivy scans.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libpq-dev \
     gcc \
     && rm -rf /var/lib/apt/lists/*
@@ -24,8 +26,9 @@ RUN if [ "$INSTALL_DEV" = "true" ]; then \
 # Minimal runtime image — no build tools, no compilers.
 FROM python:3.12-slim
 
-# Install only the runtime system library (no dev headers, no compiler)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install only the runtime system library (no dev headers, no compiler).
+# apt-get upgrade patches any OS CVEs that have fixes available.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
