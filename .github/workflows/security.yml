@@ -1,17 +1,13 @@
 name: Security — SAST, CVE & Image Scan
 
 on:
-  workflow_run:
-    workflows: ["CI — Tests & Linting"]
-    types: [completed]
-    branches: ["**"]
+  workflow_call:
 
 jobs:
   # ── Job 1: Python dependency CVE audit ────────────────────────────────────
   dependency-audit:
     name: Python CVE Audit (pip-audit)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout code
@@ -34,7 +30,6 @@ jobs:
   sast:
     name: Python SAST (bandit)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout code
@@ -88,7 +83,6 @@ jobs:
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       security-events: write
       actions: read
@@ -119,7 +113,6 @@ jobs:
   trivy:
     name: Docker Image CVE Scan (Trivy)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout code

@@ -1,10 +1,7 @@
 name: Deploy — Build, Push & Deploy to Azure
 
 on:
-  workflow_run:
-    workflows: ["Security — SAST, CVE & Image Scan"]
-    types: [completed]
-    branches: [main]
+  workflow_call:
 
 # Prevent concurrent deploys — if a deploy is running, cancel it before
 # starting a new one. Prevents race conditions on the Container App.
@@ -17,7 +14,6 @@ jobs:
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     outputs:
       image-tag: ${{ steps.meta.outputs.image-tag }}
 
