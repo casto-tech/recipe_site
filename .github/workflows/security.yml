@@ -3,19 +3,23 @@ name: Security — SAST, CVE & Image Scan
 on:
   workflow_call:
 
+# Deny all permissions by default; each job grants only what it needs.
+permissions: {}
 
 jobs:
   # ── Job 1: Python dependency CVE audit ────────────────────────────────────
   dependency-audit:
     name: Python CVE Audit (pip-audit)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
           python-version: "3.12"
           cache: pip
@@ -31,13 +35,15 @@ jobs:
   sast:
     name: Python SAST (bandit)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
           python-version: "3.12"
           cache: pip
@@ -73,7 +79,7 @@ jobs:
           "
 
       - name: Upload bandit report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
         if: always()
         with:
           name: bandit-report
@@ -91,20 +97,20 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@c10b8064de6f491fea524254123dbe5e09572f13  # v4
         with:
           languages: python
           # Queries: security-extended catches more issues than the default set
           queries: security-extended
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
+        uses: github/codeql-action/autobuild@c10b8064de6f491fea524254123dbe5e09572f13  # v4
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@c10b8064de6f491fea524254123dbe5e09572f13  # v4
         with:
           category: "/language:python"
           # Results uploaded to GitHub Security tab as SARIF
@@ -114,10 +120,13 @@ jobs:
   trivy:
     name: Docker Image CVE Scan (Trivy)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
 
       - name: Build Docker image for scanning
         run: |
@@ -130,7 +139,7 @@ jobs:
       # the job on any fixable HIGH/CRITICAL CVE. Table format correctly applies
       # ignore-unfixed; SARIF mode does not (it builds with all severities first).
       - name: Trivy scan (table — security gate)
-        uses: aquasecurity/trivy-action@v0.20.0
+        uses: aquasecurity/trivy-action@b2933f565dbc598b29947660e66259e3c7bc8561  # v0.20.0
         with:
           image-ref: recipesite:scan
           format: table
@@ -141,7 +150,7 @@ jobs:
       # SARIF scan — reporting only, never fails the job. Uploads results to
       # the GitHub Security tab for tracking even when the gate above passes.
       - name: Trivy scan (SARIF — reporting only)
-        uses: aquasecurity/trivy-action@v0.20.0
+        uses: aquasecurity/trivy-action@b2933f565dbc598b29947660e66259e3c7bc8561  # v0.20.0
         if: always()
         with:
           image-ref: recipesite:scan
@@ -152,14 +161,14 @@ jobs:
           exit-code: "0"
 
       - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13  # v4
         if: always()
         with:
           sarif_file: trivy-results.sarif
           category: trivy-docker
 
       - name: Upload Trivy SARIF artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
         if: always()
         with:
           name: trivy-scan-results

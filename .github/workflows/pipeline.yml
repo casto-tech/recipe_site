@@ -11,6 +11,9 @@ concurrency:
   group: pipeline-${{ github.ref }}
   cancel-in-progress: true
 
+# Deny all permissions by default; each job grants only what it needs.
+permissions: {}
+
 jobs:
   ci:
     name: CI — Tests & Linting
