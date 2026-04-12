@@ -17,6 +17,8 @@ permissions: {}
 jobs:
   ci:
     name: CI — Tests & Linting
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
@@ -35,5 +37,8 @@ jobs:
     needs: security
     # Only deploy on direct pushes to main, not on PRs or other branches
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
