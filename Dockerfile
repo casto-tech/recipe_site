@@ -44,6 +44,9 @@ WORKDIR /app
 # Copy source code (see .dockerignore for exclusions)
 COPY --chown=appuser:appgroup . /app/
 
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
 # Collect static files during build (uses a dummy SECRET_KEY for collectstatic only)
 # The real SECRET_KEY is never baked into the image — it is injected at runtime.
 ARG DJANGO_SECRET_KEY=build-time-placeholder-not-used-at-runtime
@@ -63,5 +66,5 @@ USER appuser
 # Only expose the application port — never the database port
 EXPOSE 8000
 
-# Run Gunicorn with 2 workers (sufficient for a recipe site; scale via replicas)
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "60"]
+# Run migrations then start Gunicorn
+CMD ["/app/entrypoint.sh"]
