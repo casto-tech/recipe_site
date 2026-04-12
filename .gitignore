@@ -3,6 +3,7 @@ claude_code_prompt.md
 environment_secret_inventory.md
 github_actions_workflow_spec.md
 infrastructure_outline.md
+infrastructure_secrets.md
 
 # ── Secrets — NEVER commit these ─────────────────────────────────────────────
 .env
