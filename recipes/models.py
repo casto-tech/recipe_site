@@ -9,6 +9,7 @@ from django.db import models
 from django.utils.text import slugify
 
 from .managers import RecipeManager
+from .validators import validate_no_private_url
 
 
 class Tag(models.Model):
@@ -33,6 +34,7 @@ class Recipe(models.Model):
     image = models.ImageField(upload_to="recipes/", blank=True, null=True)
     image_url = models.URLField(
         blank=True,
+        validators=[validate_no_private_url],
         help_text="Developer-controlled fallback URL — never rendered from user input.",
     )
     tags = models.ManyToManyField(Tag, blank=True)

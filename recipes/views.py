@@ -16,6 +16,7 @@ from .models import Recipe, Tag
 logger = logging.getLogger("recipes")
 
 
+@ratelimit(key="ip", rate="60/m", block=True)
 def index(request):
     """Main page — renders all recipe cards in newest-first order."""
     recipes = Recipe.objects.with_tags()
@@ -53,6 +54,7 @@ def search(request):
     return render(request, "recipes/partials/recipe_grid.html", {"recipes": recipes})
 
 
+@ratelimit(key="ip", rate="60/m", block=True)
 def health(request):
     """Health check endpoint for Azure Container Apps probe.
 

@@ -129,7 +129,7 @@ jobs:
       # the job on any fixable HIGH/CRITICAL CVE. Table format correctly applies
       # ignore-unfixed; SARIF mode does not (it builds with all severities first).
       - name: Trivy scan (table — security gate)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: recipesite:scan
           format: table
@@ -140,7 +140,7 @@ jobs:
       # SARIF scan — reporting only, never fails the job. Uploads results to
       # the GitHub Security tab for tracking even when the gate above passes.
       - name: Trivy scan (SARIF — reporting only)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.28.0
         if: always()
         with:
           image-ref: recipesite:scan

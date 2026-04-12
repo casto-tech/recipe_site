@@ -4,13 +4,18 @@ Development and production settings only override what differs from here.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # ── Security ──────────────────────────────────────────────────────────────────
 # Read from environment — never hardcode
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY environment variable must be set")
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
@@ -75,6 +80,7 @@ DATABASES = {
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", "5432"),
         "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
@@ -122,7 +128,7 @@ else:
 
 # ── django-axes Configuration ─────────────────────────────────────────────────
 AXES_FAILURE_LIMIT = 5
-AXES_COOLOFF_TIME = 1  # Lockout duration: 1 hour
+AXES_COOLOFF_TIME = timedelta(hours=1)  # Lockout duration: 1 hour (timedelta required — integer is treated as minutes)
 AXES_LOCKOUT_PARAMETERS = ["ip_address"]
 AXES_RESET_ON_SUCCESS = True
 AXES_VERBOSE = False  # Never log sensitive request details

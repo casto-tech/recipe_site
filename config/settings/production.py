@@ -42,18 +42,18 @@ CSP_SCRIPT_SRC = (
     "'self'",
     "https://cdn.tailwindcss.com",
     "https://unpkg.com",
-    "https://cdn.jsdelivr.net",
 )
 CSP_STYLE_SRC = (
     "'self'",
-    "'unsafe-inline'",  # Required by Tailwind CDN play
+    "'unsafe-inline'",  # TODO: remove once Tailwind is compiled to static CSS (CDN play injects <style> tags)
     "https://cdn.tailwindcss.com",
+    "https://fonts.googleapis.com",
 )
-_img_src = ["'self'", "data:", "https://picsum.photos"]
+_img_src = ["'self'", "data:"]
 if _azure_blob_domain:
     _img_src.append(_azure_blob_domain)
 CSP_IMG_SRC = tuple(_img_src)
-CSP_FONT_SRC = ("'self'",)
+CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")
 CSP_CONNECT_SRC = ("'self'",)
 CSP_FRAME_ANCESTORS = ("'none'",)
 CSP_BASE_URI = ("'none'",)
