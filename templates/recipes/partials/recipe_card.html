@@ -9,7 +9,7 @@ Never duplicate this in another template — always {% include %} this partial.
 {
   "id": {{ recipe.id }},
   "title": "{{ recipe.title|escapejs }}",
-  "image": "{% if recipe.image %}{{ recipe.image.url }}{% elif recipe.image_url %}{{ recipe.image_url }}{% else %}{% static 'images/placeholder.jpg' %}{% endif %}",
+  "image": "{% if recipe.image %}{{ recipe.image.url|escapejs }}{% elif recipe.image_url %}{{ recipe.image_url|escapejs }}{% else %}{% static 'images/placeholder.jpg' %}{% endif %}",
   "tags": [{% for tag in recipe.tags.all %}"{{ tag.name|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
   "ingredients": [{% for item in recipe.get_ingredients_list %}"{{ item|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
   "directions": [{% for step in recipe.get_directions_list %}"{{ step|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}]
