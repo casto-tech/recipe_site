@@ -9,11 +9,6 @@ concurrency:
   group: deploy-production
   cancel-in-progress: true
 
-# Opt into Node.js 24 now — Node.js 20 actions are deprecated and will be
-# forced to Node.js 24 on June 2, 2026. Remove once upstream action versions
-# ship with native Node.js 24 support.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ── Job 1: Build and push Docker image to ACR ─────────────────────────────
@@ -25,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set image tag
         id: meta
