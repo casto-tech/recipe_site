@@ -16,6 +16,10 @@ INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "django.contrib.admin"
 
 # ── HTTPS / Cookie Security ───────────────────────────────────────────────────
 SECURE_SSL_REDIRECT = True
+# Azure Container Apps terminates SSL and forwards HTTP to the container.
+# Trust the X-Forwarded-Proto header so Django knows the original request
+# was HTTPS and won't issue a redirect loop.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 3600
