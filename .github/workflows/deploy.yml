@@ -132,7 +132,7 @@ jobs:
               "DB_PASSWORD=$DB_PASSWORD" \
               "DB_HOST=$DB_HOST" \
               DB_PORT=5432 \
-            --command "python manage.py migrate --noinput"
+            --command "/bin/sh" "-c" "python manage.py migrate --noinput"
           az containerapp job start --name "$JOB_NAME" --resource-group "$RGROUP"
           for i in $(seq 1 30); do
             STATUS=$(az containerapp job execution list --name "$JOB_NAME" --resource-group "$RGROUP" --query "[0].properties.status" -o tsv)
