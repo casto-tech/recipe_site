@@ -103,7 +103,7 @@ jobs:
           MAX_ATTEMPTS=24
           SLEEP_SECONDS=5
           ATTEMPT=0
-          until curl --silent --fail --max-time 10 "${{ secrets.HEALTH_CHECK_URL }}"; do
+          until [ "$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 --location '${{ secrets.HEALTH_CHECK_URL }}')" = "200" ]; do
             ATTEMPT=$((ATTEMPT + 1))
             if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then
               echo "FAIL: Health check did not return 200 after $((MAX_ATTEMPTS * SLEEP_SECONDS)) seconds."
@@ -116,11 +116,12 @@ jobs:
           echo "PASS: Health check returned 200. Deployment successful."
 
       - name: Smoke test — verify admin is absent in production
-        # The admin must return 404 in production — not 200, not 302.
-        # A 302 (redirect to login) would indicate the admin is mounted, which is a failure.
+        # Follow redirects (-L) so SSL redirects don't mask the final response.
+        # The admin must return 404 after following all redirects — not 200 or 302,
+        # which would indicate the admin is mounted and accessible.
         run: |
           BASE_URL=$(echo "${{ secrets.HEALTH_CHECK_URL }}" | sed 's|/health/||')
-          ADMIN_STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" --max-time 10 "${BASE_URL}/management/")
+          ADMIN_STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" --max-time 10 --location "${BASE_URL}/management/")
           if [ "$ADMIN_STATUS" != "404" ]; then
             echo "FAIL: /management/ returned HTTP ${ADMIN_STATUS} — expected 404. Admin must not be accessible in production."
             exit 1
