@@ -83,11 +83,13 @@ jobs:
           APP_NAME: ${{ secrets.CONTAINER_APP_NAME }}
           RG: ${{ secrets.RESOURCE_GROUP }}
           IMAGE: ${{ secrets.ACR_LOGIN_SERVER }}/recipesite:${{ github.sha }}
+          ALLOWED_HOSTS: ${{ secrets.DJANGO_ALLOWED_HOSTS }}
         run: |
           az containerapp update \
             --name "${APP_NAME//[$'\t\r\n ']}" \
             --resource-group "${RG//[$'\t\r\n ']}" \
-            --image "${IMAGE//[$'\t\r\n ']}"
+            --image "${IMAGE//[$'\t\r\n ']}" \
+            --set-env-vars "DJANGO_ALLOWED_HOSTS=${ALLOWED_HOSTS//[$'\t\r\n ']}"
 
       # Migrations run automatically on container startup via entrypoint.sh.
       # No separate migration step needed.
