@@ -109,6 +109,9 @@ jobs:
           APP="${APP_NAME//[$'\t\r\n ']}"
           RGROUP="${RG//[$'\t\r\n ']}"
           IMG="${IMAGE//[$'\t\r\n ']}"
+          REG="${ACR_SERVER//[$'\t\r\n ']}"
+          REG_USER="${ACR_USER//[$'\t\r\n ']}"
+          REG_PASS="${ACR_PASS//[$'\t\r\n ']}"
           ENV_ID=$(az containerapp show --name "$APP" --resource-group "$RGROUP" --query "properties.environmentId" -o tsv)
           az containerapp job create \
             --name "$JOB_NAME" \
@@ -118,9 +121,9 @@ jobs:
             --replica-timeout 300 \
             --replica-retry-limit 1 \
             --trigger-type Manual \
-            --registry-server "$ACR_SERVER" \
-            --registry-username "$ACR_USER" \
-            --registry-password "$ACR_PASS" \
+            --registry-server "$REG" \
+            --registry-username "$REG_USER" \
+            --registry-password "$REG_PASS" \
             --env-vars \
               DJANGO_SETTINGS_MODULE=config.settings.production \
               "DJANGO_SECRET_KEY=$DJANGO_SECRET_KEY" \
