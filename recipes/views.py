@@ -5,7 +5,7 @@ All query logic is delegated to RecipeManager — never rewritten inline here.
 
 import logging
 
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
 from django_ratelimit.decorators import ratelimit
@@ -52,6 +52,10 @@ def search(request):
         recipes = Recipe.objects.with_tags().order_by("-created_at")
 
     return render(request, "recipes/partials/recipe_grid.html", {"recipes": recipes})
+
+
+def ratelimited(request, exception):
+    return HttpResponse("Too Many Requests", status=429, content_type="text/plain")
 
 
 @require_GET

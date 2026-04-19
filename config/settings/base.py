@@ -126,6 +126,9 @@ else:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
 
+# ── django-ratelimit Configuration ───────────────────────────────────────────
+RATELIMIT_VIEW = "recipes.views.ratelimited"
+
 # ── django-axes Configuration ─────────────────────────────────────────────────
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = timedelta(hours=1)  # Lockout duration: 1 hour (timedelta required — integer is treated as minutes)
