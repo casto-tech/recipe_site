@@ -4,6 +4,7 @@ environment_secret_inventory.md
 github_actions_workflow_spec.md
 infrastructure_outline.md
 infrastructure_secrets.md
+threat_assessment.md
 
 # ── Secrets — NEVER commit these ─────────────────────────────────────────────
 .env

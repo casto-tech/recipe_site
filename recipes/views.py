@@ -54,6 +54,7 @@ def search(request):
     return render(request, "recipes/partials/recipe_grid.html", {"recipes": recipes})
 
 
+@require_GET
 @ratelimit(key="ip", rate="60/m", block=True)
 def health(request):
     """Health check endpoint for Azure Container Apps probe.
