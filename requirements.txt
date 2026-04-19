@@ -9,3 +9,4 @@ django-csp>=3.8
 django-ratelimit>=4.1
 django-storages[azure]>=1.14
 azure-storage-blob>=12.19
+django-permissions-policy>=4.18

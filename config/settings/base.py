@@ -48,6 +48,7 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_permissions_policy.PermissionsPolicyMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -125,6 +126,18 @@ else:
     # Development: use local filesystem
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
+
+# ── Permissions Policy ───────────────────────────────────────────────────────
+PERMISSIONS_POLICY = {
+    "accelerometer": [],
+    "camera": [],
+    "geolocation": [],
+    "gyroscope": [],
+    "magnetometer": [],
+    "microphone": [],
+    "payment": [],
+    "usb": [],
+}
 
 # ── django-ratelimit Configuration ───────────────────────────────────────────
 RATELIMIT_VIEW = "recipes.views.ratelimited"
