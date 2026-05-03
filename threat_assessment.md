@@ -1,5 +1,5 @@
 # Threat Assessment — Recipe Site
-**Date:** 2026-04-18  
+**Date:** 2026-05-03  
 **Assessor:** Claude Code (claude-sonnet-4-6)  
 **Branch assessed:** `security`  
 **Scope:** Django application code, templates, CI/CD pipeline, Dockerfile, GitHub Actions workflows, Azure infrastructure configuration  
@@ -9,27 +9,29 @@
 
 ## Executive Summary
 
-No Critical or High severity findings. The application has a strong security baseline: ORM-only database access, validated input at all boundaries, HSTS, secure cookies, django-axes brute-force protection, rate limiting with a correct 429 handler, non-root container, admin fully removed from production, OIDC for Azure deployment, and automated CVE scanning on every commit.
-
-Two Medium findings carried over from the previous assessment remain open after a code revert (M-1, M-2). Two new Medium findings were identified in the CI/CD pipeline (M-3, M-4). Two Low findings are new.
+No Critical or High severity findings. The application has materially improved since the previous assessment: Tailwind is compiled to a static bundle (no CDN Play in production), Alpine.js is self-hosted, the Content Security Policy has no `'unsafe-inline'` directives, ACR authentication uses OIDC instead of long-lived admin credentials, and every rate-limited request returns a correct HTTP 429. The remaining open items are one Medium finding (Azure Storage Account Key), one Low finding carried from the previous cycle (Gunicorn forwarded-allow-ips), and two new Low findings. 
 
 **Finding summary:**
 
-| ID     | Severity      | Title                                          | Status    |
-|--------|---------------|------------------------------------------------|-----------|
-| M-1    | Medium        | Tailwind CDN Play in production — no SRI       | **Fixed** |
-| M-2    | Medium        | `style-src 'unsafe-inline'` in CSP             | **Fixed** |
-| M-3    | Medium        | Azure Storage Account Key as long-lived secret | Open      |
-| M-4    | Medium        | ACR admin credentials in deploy pipeline       | **Fixed** |
-| LOW-1  | Low           | Gunicorn `--forwarded-allow-ips '*'`           | Open      |
-| LOW-2  | Low           | Missing SRI on Alpine.js (unpkg.com)           | **Fixed** |
-| LOW-3  | Low           | Custom 429 handler for rate limit responses    | **Fixed** |
-| LOW-4  | Low           | `Permissions-Policy` header absent             | **Fixed** |
-| LOW-5  | Low           | `@require_GET` missing on health view          | **Fixed** |
-| INFO-1 | Informational | CodeQL findings do not fail CI                 | Accepted  |
-| INFO-2 | Informational | Bandit uses `\|\| true` before inline parser   | Accepted  |
-| INFO-3 | Informational | `search_vector` field unused in queries        | Note      |
-| INFO-4 | Informational | No `Retry-After` header on 429 responses       | Note      |
+| ID     | Severity      | Title                                           | Status    |
+|--------|---------------|-------------------------------------------------|-----------|
+| M-1    | Medium        | Tailwind CDN Play in production — no SRI        | **Fixed** |
+| M-2    | Medium        | `style-src 'unsafe-inline'` in CSP              | **Fixed** |
+| M-3    | Medium        | Azure Storage Account Key as long-lived secret  | Open      |
+| M-4    | Medium        | ACR admin credentials in deploy pipeline        | **Fixed** |
+| LOW-1  | Low           | Gunicorn `--forwarded-allow-ips '*'`            | Open      |
+| LOW-2  | Low           | Missing SRI on Alpine.js (unpkg.com)            | **Fixed** |
+| LOW-3  | Low           | Custom 429 handler for rate limit responses     | **Fixed** |
+| LOW-4  | Low           | `Permissions-Policy` header absent              | **Fixed** |
+| LOW-5  | Low           | `@require_GET` missing on health view           | **Fixed** |
+| LOW-6  | Low           | `@require_GET` missing on index view            | **Fixed** |
+| LOW-7  | Low           | HTMX loaded from external CDN (unpkg.com)       | Open      |
+| INFO-1 | Informational | CodeQL findings do not fail CI                  | Accepted  |
+| INFO-2 | Informational | Bandit uses `\|\| true` before inline parser    | Accepted  |
+| INFO-3 | Informational | `search_vector` field unused in queries         | Note      |
+| INFO-4 | Informational | No `Retry-After` header on 429 responses        | Note      |
+| INFO-5 | Informational | Google Fonts loaded from external CDN           | Note      |
+| INFO-6 | Informational | `secrets: inherit` passes all secrets to CI jobs | Note     |
 
 ---
 
@@ -38,83 +40,69 @@ Two Medium findings carried over from the previous assessment remain open after 
 ### A01 — Broken Access Control
 **Rating: Low Risk**
 
-The application is publicly read-only. No user-facing authentication exists. The Django admin is disabled at the `INSTALLED_APPS` level in production — the app, tables, views, and URL registration are entirely absent. The `management/` path returns HTTP 404. This is verified by a post-deploy smoke test in the CI/CD pipeline. `@require_GET` is enforced on the `search` and `health` views. CSRF is enforced on all state-changing operations.
+The application is publicly read-only with no user-facing authentication. The Django admin is disabled at the `INSTALLED_APPS` level in production — the app, tables, views, and URL registration are entirely absent. The `/management/` path returns HTTP 404; the deploy pipeline smoke-tests this after every deployment. `@require_GET` is enforced on `search` and `health`; the `index` view is missing this decorator (see LOW-6). CSRF is enforced on all state-changing operations. `form-action: 'self'` in the CSP prevents cross-origin form submission.
 
 ### A02 — Cryptographic Failures
 **Rating: Low Risk**
 
-HTTPS enforced with `SECURE_SSL_REDIRECT = True` and Azure Container Apps TLS termination. HSTS is set to one year with `includeSubdomains` and `preload`. Session and CSRF cookies are `Secure`, `HttpOnly`, and `SameSite=Strict`. `SECRET_KEY` is injected at runtime via environment variable and is never baked into the image. No sensitive data is stored in the application database.
+HTTPS is enforced via `SECURE_SSL_REDIRECT = True` and Azure Container Apps TLS termination. HSTS is set to one year with `includeSubDomains` and `preload`. Session and CSRF cookies are `Secure`, `HttpOnly`, and `SameSite=Strict`. `SECRET_KEY` is injected at runtime via environment variable and is never baked into the image; a build-time placeholder is used only for `collectstatic`. No sensitive data is stored in the application database.
 
 ### A03 — Injection
 **Rating: Low Risk**
 
-All database access uses the Django ORM exclusively — no raw SQL anywhere in the codebase. `SearchForm` validates and sanitises the `q` and `tag` query parameters before they reach `RecipeManager.search()`. The tag field is restricted by regex to `[a-z0-9\-]+`. Full-text search uses `icontains` (ORM-parameterised). Uploaded image filenames are never rendered back to users.
+All database access uses the Django ORM exclusively — no raw SQL exists in the codebase. `SearchForm` validates and sanitises `q` and `tag` query parameters before they reach `RecipeManager.search()`. The `tag` field is restricted by regex to `[a-z0-9\-]+`. Full-text search uses `icontains` (ORM-parameterised). Uploaded image filenames are never rendered back to users. The `format_html` helper in `admin.py` escapes the `image_url` before rendering a thumbnail — no XSS surface there.
 
 ### A04 — Insecure Design
 **Rating: Low Risk**
 
-The application stores only recipe content (no PII, no payment data, no credentials). Attack surface is minimal: three public endpoints (`/`, `/search/`, `/health/`). Rate limiting covers all three. Image uploads are validated by extension, size, and Pillow content inspection. The SSRF validator on `image_url` rejects all private, loopback, link-local, and reserved IP ranges.
+The application stores only recipe content — no PII, no payment data, no credentials. The attack surface is minimal: three public endpoints (`/`, `/search/`, `/health/`). Rate limiting covers all three. Image uploads are validated by extension, file size (5 MB cap), and Pillow content inspection — extension/content mismatch is detected and rejected. The SSRF validator on `image_url` rejects all private, loopback, link-local, and reserved IP ranges using Python's `ipaddress` module; `localhost` and `localhost.localdomain` are rejected by name before IP parsing.
 
 ### A05 — Security Misconfiguration
-**Rating: Medium Risk** (M-1, M-2)
+**Rating: Low Risk**
 
-`production.py` currently loads Tailwind CSS from `cdn.tailwindcss.com` without Subresource Integrity (SRI). CDN Play cannot carry a static SRI hash because it generates JavaScript dynamically. As a result, `script-src` includes the CDN domain and `style-src` carries `'unsafe-inline'` (required because CDN Play injects `<style>` tags at runtime). These two directives weaken the Content Security Policy. A fix was implemented and tested on this branch but was subsequently reverted — see M-1 and M-2.
-
-Otherwise, configuration is strong: `DEBUG = False`, no stack traces, `ALLOWED_HOSTS` enforced, `X_FRAME_OPTIONS = DENY`, `SECURE_CONTENT_TYPE_NOSNIFF`, `SECURE_REFERRER_POLICY`, `Permissions-Policy` applied via `django-permissions-policy`.
+`DEBUG = False` in production. No stack traces are exposed in error responses (verified by the test suite). `ALLOWED_HOSTS` is enforced. Tailwind CDN Play has been removed from production — the standalone CLI compiles `tailwind.output.css` at Docker build time. Alpine.js is self-hosted in `static/js/`. HTMX is loaded from `unpkg.com` with a pinned SRI hash; the CSP `script-src` still includes `https://unpkg.com` to support this (see LOW-7). No `'unsafe-inline'` directives in `script-src` or `style-src`. `Permissions-Policy` disables eight browser APIs (`camera`, `geolocation`, `microphone`, `payment`, etc.) via `django-permissions-policy`. `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: strict-origin-when-cross-origin` are set globally.
 
 ### A06 — Vulnerable and Outdated Components
 **Rating: Low Risk**
 
-`pip-audit` runs on every CI push and blocks the pipeline on any HIGH or CRITICAL CVE in installed packages. Trivy scans the Docker image for OS-level CVEs and blocks on fixable HIGH/CRITICAL findings. Dependabot opens weekly PRs for Python dependencies and GitHub Actions. All Actions are pinned to full commit SHAs — no floating version tags. `apt-get upgrade -y` runs in both Dockerfile stages to patch available OS CVEs at build time.
+`pip-audit` runs on every CI push and blocks the pipeline on any unfixed CVE in installed packages. One CVE (`CVE-2026-3219` in pip itself) is suppressed with `--ignore-vuln` because no fix version exists; a comment in the workflow flags this for removal when pip ships a patch. Trivy scans the Docker image for OS-level CVEs and blocks on fixable HIGH/CRITICAL findings. Dependabot opens weekly PRs for Python dependencies and GitHub Actions. All Actions are pinned to full commit SHAs — no floating version tags. `apt-get upgrade -y` runs in both Dockerfile stages to apply available OS security patches at build time.
 
 ### A07 — Identification and Authentication Failures
 **Rating: Low Risk**
 
-No public login surface exists. Admin login (dev only) is protected by `django-axes`: five failures triggers a one-hour IP lockout. `AXES_LOCKOUT_PARAMETERS = ["ip_address"]` and `AXES_RESET_ON_SUCCESS = True`. Auth password validators enforce minimum length, common password rejection, and similarity checks.
+No public login surface exists. Admin login (development only) is protected by `django-axes`: five failures triggers a one-hour IP lockout. `AXES_LOCKOUT_PARAMETERS = ["ip_address"]` and `AXES_RESET_ON_SUCCESS = True`. `AXES_VERBOSE = False` ensures no sensitive request data is ever logged. Auth password validators enforce minimum length, common password rejection, and similarity checks.
 
 ### A08 — Software and Data Integrity Failures
-**Rating: Medium Risk** (M-1, M-4)
+**Rating: Low Risk**
 
-Tailwind CDN Play removed from production (M-1 fixed). Alpine.js is now self-hosted in `static/js/` (LOW-2 fixed). HTMX loads from `unpkg.com` with a pinned SRI hash. The deploy pipeline uses OIDC federated credentials for both Azure login and ACR (M-4 fixed). Actions are pinned to commit SHAs, preventing action supply-chain substitution.
+Alpine.js (3.14.1) is self-hosted — no external CDN dependency. HTMX (1.9.10) is loaded from `unpkg.com` with a pinned SHA-384 SRI hash; the browser will reject any file that does not match the declared hash (see LOW-7 for self-hosting option). Tailwind CSS is compiled from source at build time by the standalone CLI binary, which is then deleted — no Tailwind CDN in production. All GitHub Actions are pinned to full commit SHAs. OIDC federated credentials are used for both the Azure login and ACR authentication — no long-lived `AZURE_CREDENTIALS` JSON or ACR admin password is stored in GitHub secrets.
 
 ### A09 — Security Logging and Monitoring Failures
 **Rating: Low Risk**
 
-Structured JSON logging is written to stdout and captured by Azure Monitor in production. `django.request` and `django.security` loggers are at WARNING level. `axes` logs lockout events. Rate-limit hits now return HTTP 429 (correct), but the `ratelimited` view does not emit a log entry — a spike in 429s is only visible via Azure Monitor request-count metrics, not via the application log stream.
+Structured JSON logging is written to stdout and captured by Azure Monitor in production. `django.request` and `django.security` loggers are at WARNING level. `axes` logs lockout events. The `ratelimited` view returns HTTP 429 but does not emit an explicit log entry — rate-limit spikes are visible via Azure Monitor request-count metrics but not via the application log stream (see INFO-4).
 
 ### A10 — Server-Side Request Forgery (SSRF)
 **Rating: Low Risk**
 
-`validate_no_private_url` in `recipes/validators.py` blocks all private RFC-1918 ranges, loopback, link-local, multicast, and unspecified addresses on the `image_url` field. The validator rejects `localhost`, `localhost.localdomain`, and any IP address in a reserved range. HTTP and HTTPS are the only permitted schemes. The validator is applied at the model level.
+`validate_no_private_url` in `recipes/validators.py` blocks all private RFC-1918 ranges, loopback, link-local, multicast, and unspecified addresses on the `image_url` field. `localhost` and `localhost.localdomain` are rejected explicitly before IP parsing. Only HTTP and HTTPS schemes are permitted. The validator is applied at the model level and is the only pathway through which a URL is ever stored. Image URLs are not fetched server-side at request time — they are stored and rendered as `<img src>` attributes, so SSRF risk is limited to the storage path.
 
 ---
 
 ## STRIDE Analysis
 
-| Threat              | Controls in place                                                                                    | Gap                                                            |
-|---------------------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| **Spoofing**        | OIDC federated credentials for Azure deploy; django-axes IP lockout; CSRF tokens                     | ACR uses admin creds (M-4); X-Forwarded-For spoofable (LOW-1) |
-| **Tampering**       | CSRF enforced; image upload validated by extension + size + Pillow verify; ORM parameterised queries | None significant                                               |
-| **Repudiation**     | Structured JSON logging to Azure Monitor; axes lockout events logged                                 | Rate-limit events not explicitly logged                        |
-| **Info Disclosure** | DEBUG=False; no stack traces; generic error pages; no sensitive data in DB                           | None significant                                               |
-| **DoS**             | Rate limiting (60/m index, 30/m search, 60/m health); correct 429 response; health endpoint is DB-free | `--forwarded-allow-ips '*'` allows rate-limit bypass via IP spoofing (LOW-1) |
-| **EoP**             | Non-root container user (`appuser`); admin removed from INSTALLED_APPS in prod; no privilege paths   | None significant                                               |
+| Threat              | Controls in place                                                                                         | Gap                                                                           |
+|---------------------|-----------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| **Spoofing**        | OIDC federated credentials for Azure deploy; django-axes IP lockout; CSRF tokens; `SameSite=Strict` cookies | X-Forwarded-For spoofable (LOW-1)                                          |
+| **Tampering**       | CSRF enforced; image upload validated by extension + size + Pillow verify; ORM parameterised queries; SRI on HTMX | None significant                                                        |
+| **Repudiation**     | Structured JSON logging to Azure Monitor; axes lockout events logged                                      | Rate-limit events not explicitly logged (INFO-4)                              |
+| **Info Disclosure** | `DEBUG=False`; no stack traces; generic error pages; no sensitive data in DB; `AXES_VERBOSE=False`        | None significant                                                              |
+| **DoS**             | Rate limiting (60/m index, 30/m search, 60/m health); correct 429 response; DB-free health endpoint       | `--forwarded-allow-ips '*'` allows rate-limit bypass via IP spoofing (LOW-1) |
+| **EoP**             | Non-root container user (`appuser`); admin removed from `INSTALLED_APPS` in production; no privilege paths | Azure Storage key grants unrestricted blob access (M-3)                      |
 
 ---
 
 ## Open Findings
-
----
-
-### M-1 — Tailwind CDN Play loaded in production without SRI ✓ Fixed
-**Severity:** Medium
-
-Tailwind CDN Play removed from production. The standalone Tailwind CLI is downloaded in the Docker builder stage, used to compile `tailwind.output.css` in the final stage, then deleted — it never ships at runtime. `base.html` uses `{% if debug %}` to load CDN Play only in local dev; production receives `<link rel="stylesheet" href="{% static 'css/tailwind.output.css' %}">` served via WhiteNoise. `cdn.tailwindcss.com` removed from `CSP_SCRIPT_SRC`.
-
-### M-2 — `'unsafe-inline'` in `style-src` CSP ✓ Fixed
-**Severity:** Medium
-
-`'unsafe-inline'` and `cdn.tailwindcss.com` removed from `CSP_STYLE_SRC`. All `style=""` inline attributes and `<style>` blocks in templates moved to `app.css` as named classes (`.hero-section`, `.footer-section`, `.hero-title`, `.search-bar-spacer`, `.frosted-bar-pinned`, `.frosted-dropdown`). `style="display:none"` on Alpine.js `x-show` elements replaced with `x-cloak`; `[x-cloak] { display: none !important; }` added to `app.css`.
 
 ---
 
@@ -123,10 +111,19 @@ Tailwind CDN Play removed from production. The standalone Tailwind CLI is downlo
 **Location:** `config/settings/base.py` → `AZURE_ACCOUNT_KEY`; GitHub Actions secrets (`AZURE_STORAGE_ACCOUNT_KEY`)
 
 **Description:**  
-`AZURE_ACCOUNT_KEY` is a full-access key to the Azure Storage account. It grants unrestricted read, write, and delete on all containers in the account — including media files. Long-lived account keys do not expire, cannot be scoped to a single container, and cannot be revoked without rotating the key (which requires updating the secret everywhere it is stored).
+`AZURE_ACCOUNT_KEY` is a full-access key to the Azure Storage account. It grants unrestricted read, write, and delete on all containers in the account — including the `media` container. Long-lived account keys do not expire, cannot be scoped to a single container, and require key rotation to revoke — which requires updating the secret in every location where it is stored.
 
 **Fix:**  
-Assign a managed identity to the Azure Container App and grant it `Storage Blob Data Contributor` on the media container only. Remove `AZURE_ACCOUNT_KEY` from settings and GitHub secrets. `django-storages` supports `DefaultAzureCredential` when no key is configured. The existing OIDC service principal can be granted the same RBAC role for CI use.
+Assign a managed identity to the Azure Container App and grant it `Storage Blob Data Contributor` on the media container only. Remove `AZURE_ACCOUNT_KEY` from `base.py` and from GitHub secrets. `django-storages` supports `DefaultAzureCredential` (which picks up the managed identity automatically) when no key is configured:
+
+```python
+# base.py — remove AZURE_ACCOUNT_KEY entirely
+if AZURE_ACCOUNT_NAME:
+    DEFAULT_FILE_STORAGE = "storages.backends.azure_storage.AzureStorage"
+    # No AZURE_ACCOUNT_KEY — DefaultAzureCredential picks up the managed identity
+```
+
+Grant the existing OIDC service principal `Storage Blob Data Contributor` on the container for CI use.
 
 **Effort:** Medium — requires Azure RBAC assignment and a settings change; no application logic changes.
 
@@ -134,40 +131,53 @@ Assign a managed identity to the Azure Container App and grant it `Storage Blob 
 
 ### LOW-1 — Gunicorn `--forwarded-allow-ips '*'` enables X-Forwarded-For spoofing
 **Severity:** Low  
-**Location:** `entrypoint.sh` → `gunicorn ... --forwarded-allow-ips '*'`
+**Location:** `entrypoint.sh`
 
 **Description:**  
 `--forwarded-allow-ips '*'` instructs Gunicorn to trust the `X-Forwarded-For` header from any upstream IP. Django's `REMOTE_ADDR` is then set to the first value in that header. `django-ratelimit` and `django-axes` both key on `REMOTE_ADDR`. A client that can set its own `X-Forwarded-For` header can cycle through arbitrary IPs and bypass rate limiting and brute-force lockouts.
 
-In Azure Container Apps the ingress IP range is not publicly documented and can change, making specific allowlisting impractical. The `*` setting is a common workaround for ACA deployments, but the risk to IP-based controls is real.
+In Azure Container Apps the ingress IP range is not publicly documented and can change, making specific allowlisting impractical without network configuration work. The `*` setting is a common workaround for ACA deployments.
 
 **Fix:**  
-If Azure Container Apps exposes a stable internal CIDR for ingress, restrict to that range: `--forwarded-allow-ips '<CIDR>'`. Otherwise, document the accepted risk and consider supplementing IP-based controls with connection-level signals. No code change recommended until the Azure ingress IP range is confirmed.
+If Azure Container Apps exposes a stable internal CIDR for ingress, restrict to that range: `--forwarded-allow-ips '<CIDR>'`. Otherwise consider supplementing IP-based controls with user-agent or session-level signals. No code change recommended until the Azure ingress IP range is confirmed.
 
 **Effort:** Low to investigate; mitigation depends on Azure network configuration.
 
 ---
 
-### LOW-2 — Missing SRI on Alpine.js loaded from unpkg.com ✓ Fixed
+### LOW-6 — `@require_GET` missing on the index view ✓ Fixed
 **Severity:** Low
 
-Alpine.js 3.14.1 downloaded to `static/js/alpinejs.min.js` and served via WhiteNoise. The `unpkg.com` CDN reference removed from `base.html`. `https://unpkg.com` remains in `CSP_SCRIPT_SRC` for HTMX (which retains its SRI hash).
+`@require_GET` added to `recipes/views.py` above the `@ratelimit` decorator on the `index` view. Non-GET requests to `/` now return HTTP 405, consistent with `search` and `health`.
 
 ---
 
-## Fixed Findings
+### LOW-7 — HTMX loaded from external CDN (unpkg.com)
+**Severity:** Low  
+**Location:** `templates/base.html` → HTMX `<script>` tag; `config/settings/production.py` → `CSP_SCRIPT_SRC`
 
-### M-4 — ACR admin credentials replaced with OIDC + `az acr login` ✓ Fixed
-`docker/login-action` (admin creds) removed from `build-and-push` job. `azure/login` (OIDC) added to that job with `id-token: write` permission. `az acr login --name` authenticates Docker to ACR using the short-lived OIDC token. `ACR_USERNAME` and `ACR_PASSWORD` secrets can now be deleted from GitHub. Prerequisite: grant the OIDC service principal `AcrPush` role on the registry via `az role assignment create`.
+**Description:**  
+HTMX 1.9.10 is loaded from `https://unpkg.com` with a pinned SHA-384 SRI hash. The SRI hash prevents a compromised CDN from serving a different file — the browser will reject any content that does not match the declared hash. However, `https://unpkg.com` must remain in `CSP_SCRIPT_SRC` to allow this load. Any future XSS that could inject a `<script src="https://unpkg.com/...">` tag would have a CSP-allowed origin to load from (though SRI would still block non-matching content).
 
-### LOW-3 — Custom 429 handler for django-ratelimit ✓ Fixed
-`RATELIMIT_VIEW = "recipes.views.ratelimited"` added to `base.py`. The `ratelimited` view in `recipes/views.py` returns HTTP 429 with `content_type="text/plain"`. Rate-limited requests no longer return the misleading HTTP 403.
+Self-hosting HTMX eliminates the external dependency entirely, allows removing `https://unpkg.com` from the CSP, and makes the application fully self-contained with no runtime CDN calls for JavaScript.
 
-### LOW-4 — `Permissions-Policy` header absent ✓ Fixed
-`django-permissions-policy` added to `requirements.txt` and `MIDDLEWARE`. `PERMISSIONS_POLICY` block in `base.py` disables accelerometer, camera, geolocation, gyroscope, magnetometer, microphone, payment, and USB for all origins.
+**Fix:**  
+Download HTMX and serve it via WhiteNoise:
 
-### LOW-5 — `@require_GET` missing on health view ✓ Fixed
-`@require_GET` decorator added to `recipes/views.py`. Non-GET requests to `/health/` now return HTTP 405 Method Not Allowed.
+```sh
+curl -fsSL "https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js" \
+     -o static/js/htmx.min.js
+```
+
+Update `base.html`:
+```html
+<!-- HTMX 1.9.10 — self-hosted -->
+<script src="{% static 'js/htmx.min.js' %}"></script>
+```
+
+Remove `"https://unpkg.com"` from `CSP_SCRIPT_SRC` in `production.py`.
+
+**Effort:** Same one-step pattern as the Alpine.js fix (LOW-2). Verify the SHA-256 of the downloaded file against the published release before committing.
 
 ---
 
@@ -180,17 +190,47 @@ CodeQL analysis uploads SARIF results to the GitHub Security tab but does not se
 `bandit ... -o bandit-report.json || true` suppresses bandit's own exit code. The inline Python script reads the JSON and exits 1 on HIGH findings. If bandit crashes with a non-JSON error the Python script will also fail, so the gate still holds. The pattern is fragile but does not create a bypass.
 
 ### INFO-3 — `search_vector` field populated but unused in queries
-`Recipe.search_vector` is a `SearchVectorField` with a GIN index. `RecipeManager.search()` uses `icontains` rather than `SearchQuery` / `SearchRank`. The field and index exist but provide no query benefit. If full-text search ranking is desired, migrate the search method to use `SearchQuery`. Otherwise, the field is safe dead weight.
+`Recipe.search_vector` is a `SearchVectorField` with a GIN index. `RecipeManager.search()` uses `icontains` rather than `SearchQuery` / `SearchRank`. The field and index exist but provide no query benefit. If full-text search ranking is desired, migrate `search()` to use `SearchQuery`. Otherwise the field is safe dead weight.
 
 ### INFO-4 — No `Retry-After` header on 429 responses
-The `ratelimited` view returns HTTP 429 but omits the `Retry-After` header recommended by RFC 6585. Without it, HTTP clients may retry immediately or back off arbitrarily. Low priority for a public read-only site with no automated API clients.
+The `ratelimited` view returns HTTP 429 but omits the `Retry-After` header recommended by RFC 6585. Without it, HTTP clients may retry immediately. Additionally, rate-limit hits generate no log entry — spikes are only visible via Azure Monitor request-count metrics, not the application log stream. Low priority for a public read-only site with no automated API clients.
+
+### INFO-5 — Google Fonts loaded from external CDN
+`fonts.googleapis.com` and `fonts.gstatic.com` are loaded unconditionally on every page, including in production. Every user's IP address is sent to Google's servers on page load. This is a privacy consideration, not a security vulnerability. If user privacy is a concern, Playfair Display and DM Sans can be self-hosted via the `google-webfonts-helper` tool and served via WhiteNoise, which would also allow removing `fonts.googleapis.com` from `CSP_STYLE_SRC` and `fonts.gstatic.com` from `CSP_FONT_SRC`.
+
+### INFO-6 — `secrets: inherit` passes all secrets to security scanning jobs
+`pipeline.yml` uses `secrets: inherit` on the `ci`, `security`, and `deploy` calls. This means jobs like `pip-audit`, `bandit`, and `trivy` — which require no secrets — receive the full set of repository secrets including Azure credentials. The secrets are not used by these jobs and are not exposed in logs, but the blast radius of a supply-chain compromise in one of those actions (e.g., `setup-python`) would be wider than necessary. Scoped `secrets:` blocks (`secrets: {}` for jobs that need none, `secrets: { ACR_LOGIN_SERVER: ..., AZURE_CLIENT_ID: ... }` for deploy) would tighten this.
+
+---
+
+## Fixed Findings
+
+### M-1 — Tailwind CDN Play removed from production ✓ Fixed
+Standalone Tailwind CLI downloads during the Docker builder stage, compiles `tailwind.output.css` in the final stage, then is deleted — it never ships at runtime. `base.html` uses `{% if debug %}` to load CDN Play only in local dev; production receives `<link rel="stylesheet" href="{% static 'css/tailwind.output.css' %}">` via WhiteNoise.
+
+### M-2 — `'unsafe-inline'` removed from `style-src` CSP ✓ Fixed
+All `style=""` inline attributes and `<style>` blocks moved to `app.css` as named classes. `style="display:none"` on Alpine.js `x-show` elements replaced with `x-cloak`. `[x-cloak] { display: none !important; }` in `app.css`. `CSP_STYLE_SRC` is now `('self', 'https://fonts.googleapis.com')` — no `unsafe-inline`.
+
+### M-4 — ACR admin credentials replaced with OIDC ✓ Fixed
+`docker/login-action` (admin creds) removed from the `build-and-push` job. `azure/login` (OIDC) authenticates to Azure; `az acr login --name` authenticates Docker to ACR using the short-lived OIDC token. `ACR_USERNAME` and `ACR_PASSWORD` secrets can be deleted from GitHub.
+
+### LOW-2 — Alpine.js self-hosted, unpkg.com CDN eliminated ✓ Fixed
+Alpine.js 3.14.1 downloaded to `static/js/alpinejs.min.js` and served via WhiteNoise. The `unpkg.com` CDN script tag removed from `base.html`.
+
+### LOW-3 — Custom 429 handler for django-ratelimit ✓ Fixed
+`RATELIMIT_VIEW = "recipes.views.ratelimited"` in `base.py`. The `ratelimited` view returns HTTP 429 with `content_type="text/plain"`.
+
+### LOW-4 — `Permissions-Policy` header added ✓ Fixed
+`django-permissions-policy` added to `requirements.txt` and `MIDDLEWARE`. `PERMISSIONS_POLICY` block in `base.py` disables accelerometer, camera, geolocation, gyroscope, magnetometer, microphone, payment, and USB.
+
+### LOW-5 — `@require_GET` added to health view ✓ Fixed
+`@require_GET` decorator added to `recipes/views.py`. Non-GET requests to `/health/` now return HTTP 405.
 
 ---
 
 ## Recommended Fix Order
 
-1. ~~**M-4**~~ ✓ Done — ACR admin credentials replaced with OIDC + `az acr login`.
-2. ~~**M-1 + M-2**~~ ✓ Done — Tailwind compiled to static bundle; CDN Play removed from production; `'unsafe-inline'` stripped from CSP.
-3. ~~**LOW-2**~~ ✓ Done — Alpine.js self-hosted in `static/js/`; CDN dependency removed.
-4. **M-3** — Migrate Azure Storage to managed identity. Requires Azure RBAC changes; no application code changes.
-5. **LOW-1** — Investigate Azure Container Apps ingress CIDR; restrict `--forwarded-allow-ips` if a stable range can be confirmed.
+1. ~~**LOW-6**~~ ✓ Done — `@require_GET` added to the `index` view.
+2. **LOW-7** — Self-host HTMX. Same one-command pattern as Alpine.js. Eliminates the last external script CDN and allows removing `https://unpkg.com` from `CSP_SCRIPT_SRC`.
+3. **M-3** — Migrate Azure Storage to managed identity. Removes the last long-lived secret from GitHub. Requires Azure RBAC changes; no application logic changes.
+4. **LOW-1** — Investigate Azure Container Apps ingress CIDR; restrict `--forwarded-allow-ips` if a stable range can be confirmed.

@@ -16,6 +16,7 @@ from .models import Recipe, Tag
 logger = logging.getLogger("recipes")
 
 
+@require_GET
 @ratelimit(key="ip", rate="60/m", block=True)
 def index(request):
     """Main page — renders all recipe cards in newest-first order."""
