@@ -25,13 +25,13 @@ No Critical or High severity findings. The application has materially improved s
 | LOW-4  | Low           | `Permissions-Policy` header absent              | **Fixed** |
 | LOW-5  | Low           | `@require_GET` missing on health view           | **Fixed** |
 | LOW-6  | Low           | `@require_GET` missing on index view            | **Fixed** |
-| LOW-7  | Low           | HTMX loaded from external CDN (unpkg.com)       | Open      |
+| LOW-7  | Low           | HTMX loaded from external CDN (unpkg.com)       | **Fixed** |
 | INFO-1 | Informational | CodeQL findings do not fail CI                  | Accepted  |
 | INFO-2 | Informational | Bandit uses `\|\| true` before inline parser    | Accepted  |
 | INFO-3 | Informational | `search_vector` field unused in queries         | Note      |
 | INFO-4 | Informational | No `Retry-After` header on 429 responses        | Note      |
 | INFO-5 | Informational | Google Fonts loaded from external CDN           | Note      |
-| INFO-6 | Informational | `secrets: inherit` passes all secrets to CI jobs | Note     |
+| INFO-6 | Informational | `secrets: inherit` passes all secrets to CI jobs | **Fixed** |
 
 ---
 
@@ -152,32 +152,10 @@ If Azure Container Apps exposes a stable internal CIDR for ingress, restrict to 
 
 ---
 
-### LOW-7 — HTMX loaded from external CDN (unpkg.com)
-**Severity:** Low  
-**Location:** `templates/base.html` → HTMX `<script>` tag; `config/settings/production.py` → `CSP_SCRIPT_SRC`
+### LOW-7 — HTMX loaded from external CDN (unpkg.com) ✓ Fixed
+**Severity:** Low
 
-**Description:**  
-HTMX 1.9.10 is loaded from `https://unpkg.com` with a pinned SHA-384 SRI hash. The SRI hash prevents a compromised CDN from serving a different file — the browser will reject any content that does not match the declared hash. However, `https://unpkg.com` must remain in `CSP_SCRIPT_SRC` to allow this load. Any future XSS that could inject a `<script src="https://unpkg.com/...">` tag would have a CSP-allowed origin to load from (though SRI would still block non-matching content).
-
-Self-hosting HTMX eliminates the external dependency entirely, allows removing `https://unpkg.com` from the CSP, and makes the application fully self-contained with no runtime CDN calls for JavaScript.
-
-**Fix:**  
-Download HTMX and serve it via WhiteNoise:
-
-```sh
-curl -fsSL "https://unpkg.com/htmx.org@1.9.10/dist/htmx.min.js" \
-     -o static/js/htmx.min.js
-```
-
-Update `base.html`:
-```html
-<!-- HTMX 1.9.10 — self-hosted -->
-<script src="{% static 'js/htmx.min.js' %}"></script>
-```
-
-Remove `"https://unpkg.com"` from `CSP_SCRIPT_SRC` in `production.py`.
-
-**Effort:** Same one-step pattern as the Alpine.js fix (LOW-2). Verify the SHA-256 of the downloaded file against the published release before committing.
+HTMX 1.9.10 downloaded to `static/js/htmx.min.js` and served via WhiteNoise. The `unpkg.com` CDN script tag removed from `base.html`. `"https://unpkg.com"` removed from `CSP_SCRIPT_SRC` — `script-src` is now `'self'` only. All JavaScript (Alpine.js, HTMX, app.js) is self-hosted; there are no external script CDN dependencies in production.
 
 ---
 
@@ -198,8 +176,8 @@ The `ratelimited` view returns HTTP 429 but omits the `Retry-After` header recom
 ### INFO-5 — Google Fonts loaded from external CDN
 `fonts.googleapis.com` and `fonts.gstatic.com` are loaded unconditionally on every page, including in production. Every user's IP address is sent to Google's servers on page load. This is a privacy consideration, not a security vulnerability. If user privacy is a concern, Playfair Display and DM Sans can be self-hosted via the `google-webfonts-helper` tool and served via WhiteNoise, which would also allow removing `fonts.googleapis.com` from `CSP_STYLE_SRC` and `fonts.gstatic.com` from `CSP_FONT_SRC`.
 
-### INFO-6 — `secrets: inherit` passes all secrets to security scanning jobs
-`pipeline.yml` uses `secrets: inherit` on the `ci`, `security`, and `deploy` calls. This means jobs like `pip-audit`, `bandit`, and `trivy` — which require no secrets — receive the full set of repository secrets including Azure credentials. The secrets are not used by these jobs and are not exposed in logs, but the blast radius of a supply-chain compromise in one of those actions (e.g., `setup-python`) would be wider than necessary. Scoped `secrets:` blocks (`secrets: {}` for jobs that need none, `secrets: { ACR_LOGIN_SERVER: ..., AZURE_CLIENT_ID: ... }` for deploy) would tighten this.
+### INFO-6 — `secrets: inherit` passes all secrets to security scanning jobs ✓ Fixed
+`pipeline.yml` updated: `ci` and `security` jobs omit the `secrets:` key entirely (no secrets passed). The `deploy` job uses an explicit eight-entry `secrets:` mapping. `deploy.yml` now declares those eight secrets in its `on.workflow_call.secrets:` block with `required: true`. Azure credentials are no longer available to `pip-audit`, `bandit`, `CodeQL`, or `Trivy`.
 
 ---
 
@@ -231,6 +209,6 @@ Alpine.js 3.14.1 downloaded to `static/js/alpinejs.min.js` and served via WhiteN
 ## Recommended Fix Order
 
 1. ~~**LOW-6**~~ ✓ Done — `@require_GET` added to the `index` view.
-2. **LOW-7** — Self-host HTMX. Same one-command pattern as Alpine.js. Eliminates the last external script CDN and allows removing `https://unpkg.com` from `CSP_SCRIPT_SRC`.
+2. ~~**LOW-7**~~ ✓ Done — HTMX self-hosted in `static/js/`; `https://unpkg.com` removed from `CSP_SCRIPT_SRC`.
 3. **M-3** — Migrate Azure Storage to managed identity. Removes the last long-lived secret from GitHub. Requires Azure RBAC changes; no application logic changes.
 4. **LOW-1** — Investigate Azure Container Apps ingress CIDR; restrict `--forwarded-allow-ips` if a stable range can be confirmed.

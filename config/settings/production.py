@@ -40,10 +40,7 @@ _azure_blob_domain = (
 )
 
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = (
-    "'self'",
-    "https://unpkg.com",
-)
+CSP_SCRIPT_SRC = ("'self'",)
 CSP_STYLE_SRC = (
     "'self'",
     "https://fonts.googleapis.com",

@@ -2,6 +2,23 @@ name: Deploy — Build, Push & Deploy to Azure
 
 on:
   workflow_call:
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      ACR_LOGIN_SERVER:
+        required: true
+      CONTAINER_APP_NAME:
+        required: true
+      RESOURCE_GROUP:
+        required: true
+      DJANGO_ALLOWED_HOSTS:
+        required: true
+      HEALTH_CHECK_URL:
+        required: true
 
 # Prevent concurrent deploys — if a deploy is running, cancel it before
 # starting a new one. Prevents race conditions on the Container App.
