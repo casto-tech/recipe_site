@@ -28,8 +28,10 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Run pip-audit
-        # Fails the pipeline on any HIGH or CRITICAL CVE in installed packages
-        run: pip-audit --strict --vulnerability-service pypi
+        # Fails the pipeline on any CVE in installed packages.
+        # CVE-2026-3219: unfixed vulnerability in pip itself — no fix version exists yet.
+        # Remove the ignore once pip ships a patched release.
+        run: pip-audit --strict --vulnerability-service pypi --ignore-vuln CVE-2026-3219
 
   # ── Job 2: Python SAST (bandit) ───────────────────────────────────────────
   sast:
