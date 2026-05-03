@@ -29,7 +29,7 @@ No Critical or High severity findings. The application has materially improved s
 | INFO-1 | Informational | CodeQL findings do not fail CI                  | Accepted  |
 | INFO-2 | Informational | Bandit uses `\|\| true` before inline parser    | Accepted  |
 | INFO-3 | Informational | `search_vector` field unused in queries         | Note      |
-| INFO-4 | Informational | No `Retry-After` header on 429 responses        | Note      |
+| INFO-4 | Informational | No `Retry-After` header on 429 responses        | **Fixed** |
 | INFO-5 | Informational | Google Fonts loaded from external CDN           | Note      |
 | INFO-6 | Informational | `secrets: inherit` passes all secrets to CI jobs | **Fixed** |
 
@@ -170,8 +170,8 @@ CodeQL analysis uploads SARIF results to the GitHub Security tab but does not se
 ### INFO-3 — `search_vector` field populated but unused in queries
 `Recipe.search_vector` is a `SearchVectorField` with a GIN index. `RecipeManager.search()` uses `icontains` rather than `SearchQuery` / `SearchRank`. The field and index exist but provide no query benefit. If full-text search ranking is desired, migrate `search()` to use `SearchQuery`. Otherwise the field is safe dead weight.
 
-### INFO-4 — No `Retry-After` header on 429 responses
-The `ratelimited` view returns HTTP 429 but omits the `Retry-After` header recommended by RFC 6585. Without it, HTTP clients may retry immediately. Additionally, rate-limit hits generate no log entry — spikes are only visible via Azure Monitor request-count metrics, not the application log stream. Low priority for a public read-only site with no automated API clients.
+### INFO-4 — No `Retry-After` header on 429 responses ✓ Fixed
+`ratelimited` view updated: emits `logger.warning` with the client IP on every rate-limit hit (rate-limit spikes now visible in the application log stream), and sets `Retry-After: 60` on the response (60 seconds covers the longest per-minute window across all three endpoints).
 
 ### INFO-5 — Google Fonts loaded from external CDN
 `fonts.googleapis.com` and `fonts.gstatic.com` are loaded unconditionally on every page, including in production. Every user's IP address is sent to Google's servers on page load. This is a privacy consideration, not a security vulnerability. If user privacy is a concern, Playfair Display and DM Sans can be self-hosted via the `google-webfonts-helper` tool and served via WhiteNoise, which would also allow removing `fonts.googleapis.com` from `CSP_STYLE_SRC` and `fonts.gstatic.com` from `CSP_FONT_SRC`.

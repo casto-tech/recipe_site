@@ -17,6 +17,8 @@ Never duplicate this in another template — always {% include %} this partial.
 </script>
 
 <article
+  data-title="{{ recipe.title|lower }}"
+  x-show="!searchQuery || $el.dataset.title.includes(searchQuery.toLowerCase())"
   class="group bg-white rounded-2xl overflow-hidden shadow-card cursor-pointer
          hover:shadow-card-lg hover:-translate-y-1 transition-all duration-300 ease-out
          border border-stone/40"

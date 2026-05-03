@@ -56,7 +56,10 @@ def search(request):
 
 
 def ratelimited(request, exception):
-    return HttpResponse("Too Many Requests", status=429, content_type="text/plain")
+    logger.warning("Rate limit exceeded: %s", request.META.get("REMOTE_ADDR", "unknown"))
+    response = HttpResponse("Too Many Requests", status=429, content_type="text/plain")
+    response["Retry-After"] = "60"
+    return response
 
 
 @require_GET
