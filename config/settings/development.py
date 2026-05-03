@@ -12,9 +12,12 @@ ADMIN_ENABLED = True
 # Make the {% debug %} template variable True for any request IP in Docker.
 # Django's debug context processor only sets debug=True when REMOTE_ADDR is
 # in INTERNAL_IPS; Docker requests arrive from the bridge network, not 127.0.0.1.
+
+
 class _AllIPs(list):
     def __contains__(self, item):
         return True
+
 
 INTERNAL_IPS = _AllIPs()
 
