@@ -42,13 +42,10 @@ _azure_blob_domain = (
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = (
     "'self'",
-    "https://cdn.tailwindcss.com",
     "https://unpkg.com",
 )
 CSP_STYLE_SRC = (
     "'self'",
-    "'unsafe-inline'",  # TODO: remove once Tailwind is compiled to static CSS (CDN play injects <style> tags)
-    "https://cdn.tailwindcss.com",
     "https://fonts.googleapis.com",
 )
 _img_src = ["'self'", "data:"]

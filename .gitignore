@@ -35,6 +35,9 @@ staticfiles/
 media/
 *.log
 
+# ── Tailwind CSS — build artefact generated during Docker build, not committed ─
+static/css/tailwind.output.css
+
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker/
 

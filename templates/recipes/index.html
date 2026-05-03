@@ -4,10 +4,6 @@
 {% block title %}Recipe Repo{% endblock %}
 
 {% block content %}
-<style>
-  /* Hide the native browser clear button — replaced with a custom one below */
-  #search-input::-webkit-search-cancel-button { display: none; }
-</style>
 <div x-data="{ activeRecipe: null }">
 
   <!-- ── Site Header — absolute so it overlays the top of the hero brick wall -->
@@ -34,7 +30,7 @@
   </header>
 
   <!-- ── Hero Banner ────────────────────────────────────────────────────────── -->
-  <section class="relative" style="background-color: #3d1208; padding-top: 72px;">
+  <section class="relative hero-section">
     <!-- Weathered old brick wall -->
     <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -274,8 +270,7 @@
       <p class="text-[#d4b896] text-xs tracking-[0.25em] uppercase font-medium mb-4">
         Home-cooked favourites
       </p>
-      <h1 class="font-serif text-5xl md:text-6xl lg:text-7xl font-bold text-[#e8d0b4] leading-tight mb-6"
-          style="text-shadow: 0 2px 12px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.9);">
+      <h1 class="font-serif text-5xl md:text-6xl lg:text-7xl font-bold text-[#e8d0b4] leading-tight mb-6 hero-title">
         What are we<br/>
         <em class="text-[#e8d0b4] not-italic">cooking today?</em>
       </h1>
@@ -310,14 +305,11 @@
          class="relative z-30 pb-16">
       <!-- Spacer: same height as the bar, keeps the section from collapsing
            when the bar goes fixed and leaves normal flow -->
-      <div x-show="pinned" style="height:72px" aria-hidden="true"></div>
+      <div x-show="pinned" class="search-bar-spacer" aria-hidden="true"></div>
 
       <!-- Bar: fixed when pinned, static otherwise.  Frosted-glass wrapper
            keeps the transparent look over whatever content is beneath it. -->
-      <div :class="pinned ? 'fixed top-0 left-0 right-0 z-50 py-3' : 'py-0'"
-           :style="pinned
-             ? 'background-color:rgba(40,12,4,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);'
-             : ''">
+      <div :class="pinned ? 'fixed top-0 left-0 right-0 z-50 py-3 frosted-bar-pinned' : 'py-0'">
       <form id="search-form"
             hx-get="{% url 'recipes:search' %}"
             hx-target="#recipe-grid"
@@ -337,7 +329,7 @@
             <input
               id="search-input"
               name="q"
-              type="search"
+              type="text"
               placeholder="Search recipes, ingredients…"
               maxlength="200"
               autocomplete="off"
@@ -396,8 +388,7 @@
                  x-transition:leave-start="opacity-100 translate-y-0"
                  x-transition:leave-end="opacity-0 -translate-y-1"
                  class="absolute top-full mt-2 left-0 w-full z-50 rounded-2xl
-                        border border-white/20 overflow-hidden"
-                 style="background-color:rgba(40,12,4,0.55);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);">
+                        border border-white/20 overflow-hidden frosted-dropdown">
               <button type="button"
                       @click="selected=''; label='All categories'; open=false; $nextTick(()=>{ $refs.tagInput.dispatchEvent(new Event('change')) })"
                       class="w-full text-left px-5 py-3 font-sans text-sm text-[#c4a882]
@@ -449,7 +440,7 @@
   </main>
 
   <!-- ── Footer ────────────────────────────────────────────────────────────── -->
-  <footer class="relative overflow-hidden" style="background-color: #3d1208;">
+  <footer class="relative overflow-hidden footer-section">
     <!-- Brick wall background (same pattern/filters as the hero) -->
     <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice"
          xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -624,13 +615,4 @@
 
 </div>
 
-<style>
-  .htmx-indicator { display: none; }
-  .htmx-request .htmx-indicator { display: flex; }
-  .htmx-request.htmx-indicator { display: flex; }
-
-  /* Fade grid while loading */
-  #recipe-grid { transition: opacity 0.2s ease; }
-  .htmx-request #recipe-grid { opacity: 0.4; pointer-events: none; }
-</style>
 {% endblock %}

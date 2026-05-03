@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,10 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Recipe Repo{% endblock %}</title>
 
-  <!-- Tailwind CSS via CDN Play — config loaded from static file to avoid inline scripts -->
+  {% if debug %}
+  <!-- Local dev only: Tailwind CDN Play + config. Production uses compiled static bundle. -->
   <script src="https://cdn.tailwindcss.com"></script>
-  {% load static %}
   <script src="{% static 'js/tailwind.config.js' %}"></script>
+  {% else %}
+  <link rel="stylesheet" href="{% static 'css/tailwind.output.css' %}" />
+  {% endif %}
 
   <!-- Alpine.js 3.14.1 — pinned version with SRI integrity hash -->
   <script defer
@@ -27,10 +31,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-  {% load static %}
   <link rel="stylesheet" href="{% static 'css/app.css' %}" />
 </head>
-<body class="font-sans antialiased" style="background-color:#faf7f2; color:#1c1c1c;">
+<body class="font-sans antialiased">
   {% block content %}{% endblock %}
   <script src="{% static 'js/app.js' %}"></script>
 </body>

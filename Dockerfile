@@ -9,7 +9,16 @@ FROM python:3.12-slim AS builder
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libpq-dev \
     gcc \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Download Tailwind CSS standalone CLI — compiled to a static bundle in the final stage.
+# Binary is copied across, runs once, then deleted; it never ships at runtime.
+ARG TAILWIND_VERSION=3.4.17
+RUN curl -fsSL \
+    "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64" \
+    -o /tailwindcss \
+    && chmod +x /tailwindcss
 
 # Install Python dependencies into a custom prefix so we can copy them cleanly.
 # INSTALL_DEV=true adds pytest, coverage, linting tools (used in docker-compose dev builds).
@@ -46,6 +55,16 @@ COPY --chown=appuser:appgroup . /app/
 
 # Make entrypoint executable
 RUN chmod +x /app/entrypoint.sh
+
+# Compile Tailwind CSS to a static bundle — eliminates the CDN script in production.
+# Binary comes from the builder stage; deleted immediately after so it never ships.
+COPY --from=builder /tailwindcss /usr/local/bin/tailwindcss
+RUN tailwindcss \
+    -c tailwind.config.js \
+    -i static/css/tailwind.input.css \
+    -o static/css/tailwind.output.css \
+    --minify \
+    && rm /usr/local/bin/tailwindcss
 
 # Collect static files during build (uses a dummy SECRET_KEY for collectstatic only)
 # The real SECRET_KEY is never baked into the image — it is injected at runtime.
