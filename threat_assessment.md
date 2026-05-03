@@ -22,7 +22,7 @@ Two Medium findings carried over from the previous assessment remain open after 
 | M-3    | Medium        | Azure Storage Account Key as long-lived secret | Open      |
 | M-4    | Medium        | ACR admin credentials in deploy pipeline       | **Fixed** |
 | LOW-1  | Low           | Gunicorn `--forwarded-allow-ips '*'`           | Open      |
-| LOW-2  | Low           | Missing SRI on Alpine.js (unpkg.com)           | Open      |
+| LOW-2  | Low           | Missing SRI on Alpine.js (unpkg.com)           | **Fixed** |
 | LOW-3  | Low           | Custom 429 handler for rate limit responses    | **Fixed** |
 | LOW-4  | Low           | `Permissions-Policy` header absent             | **Fixed** |
 | LOW-5  | Low           | `@require_GET` missing on health view          | **Fixed** |
@@ -75,7 +75,7 @@ No public login surface exists. Admin login (dev only) is protected by `django-a
 ### A08 — Software and Data Integrity Failures
 **Rating: Medium Risk** (M-1, M-4)
 
-The Tailwind CDN script (`cdn.tailwindcss.com`) and Alpine.js CDN (`unpkg.com/alpinejs`) are loaded without SRI hashes. A CDN compromise could serve malicious JavaScript to all users. The deploy pipeline uses ACR admin credentials (long-lived username/password) rather than the OIDC federated credentials already used for `az login`. Actions are pinned to commit SHAs, preventing action supply-chain substitution.
+Tailwind CDN Play removed from production (M-1 fixed). Alpine.js is now self-hosted in `static/js/` (LOW-2 fixed). HTMX loads from `unpkg.com` with a pinned SRI hash. The deploy pipeline uses OIDC federated credentials for both Azure login and ACR (M-4 fixed). Actions are pinned to commit SHAs, preventing action supply-chain substitution.
 
 ### A09 — Security Logging and Monitoring Failures
 **Rating: Low Risk**
@@ -148,29 +148,10 @@ If Azure Container Apps exposes a stable internal CIDR for ingress, restrict to 
 
 ---
 
-### LOW-2 — Missing SRI on Alpine.js loaded from unpkg.com
-**Severity:** Low  
-**Location:** `templates/base.html` → Alpine.js `<script>` tag
+### LOW-2 — Missing SRI on Alpine.js loaded from unpkg.com ✓ Fixed
+**Severity:** Low
 
-**Description:**  
-Alpine.js is loaded from `https://unpkg.com/alpinejs` without an `integrity` attribute. A compromise of the `unpkg.com` CDN could serve a malicious Alpine.js version. Alpine drives all interactive UI (recipe card modal, search filtering) and has full DOM access — a tampered version is equivalent to arbitrary XSS.
-
-**Fix:**  
-Self-host Alpine.js as a static asset served via WhiteNoise. This eliminates the external CDN dependency entirely.
-
-```html
-<!-- In base.html -->
-<script defer src="{% static 'js/alpinejs.min.js' %}"></script>
-```
-
-Alternatively, pin to a specific version and add an SRI hash:
-
-```html
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
-        integrity="sha384-<hash>" crossorigin="anonymous"></script>
-```
-
-**Effort:** Low — download the file, place in `static/js/`, update the template reference.
+Alpine.js 3.14.1 downloaded to `static/js/alpinejs.min.js` and served via WhiteNoise. The `unpkg.com` CDN reference removed from `base.html`. `https://unpkg.com` remains in `CSP_SCRIPT_SRC` for HTMX (which retains its SRI hash).
 
 ---
 
@@ -210,6 +191,6 @@ The `ratelimited` view returns HTTP 429 but omits the `Retry-After` header recom
 
 1. ~~**M-4**~~ ✓ Done — ACR admin credentials replaced with OIDC + `az acr login`.
 2. ~~**M-1 + M-2**~~ ✓ Done — Tailwind compiled to static bundle; CDN Play removed from production; `'unsafe-inline'` stripped from CSP.
-3. **LOW-2** — Self-host Alpine.js. Eliminates the last external CDN dependency in production with minimal effort.
+3. ~~**LOW-2**~~ ✓ Done — Alpine.js self-hosted in `static/js/`; CDN dependency removed.
 4. **M-3** — Migrate Azure Storage to managed identity. Requires Azure RBAC changes; no application code changes.
 5. **LOW-1** — Investigate Azure Container Apps ingress CIDR; restrict `--forwarded-allow-ips` if a stable range can be confirmed.

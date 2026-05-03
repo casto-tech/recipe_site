@@ -14,11 +14,8 @@
   <link rel="stylesheet" href="{% static 'css/tailwind.output.css' %}" />
   {% endif %}
 
-  <!-- Alpine.js 3.14.1 — pinned version with SRI integrity hash -->
-  <script defer
-    src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"
-    integrity="sha384-l8f0VcPi/M1iHPv8egOnY/15TDwqgbOR1anMIJWvU6nLRgZVLTLSaNqi/TOoT5Fh"
-    crossorigin="anonymous"></script>
+  <!-- Alpine.js 3.14.1 — self-hosted, eliminates unpkg.com CDN dependency -->
+  <script defer src="{% static 'js/alpinejs.min.js' %}"></script>
 
   <!-- HTMX 1.9.10 — pinned version with SRI integrity hash -->
   <script
