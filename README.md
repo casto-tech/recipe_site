@@ -28,7 +28,7 @@ A single-page recipe website built with Django 5, HTMX, Alpine.js, and Tailwind 
 |-------|-----------|
 | Backend | Django 5, Python 3.12 |
 | Database | PostgreSQL 16 |
-| Frontend | HTMX, Alpine.js, Tailwind CSS (CDN Play) |
+| Frontend | HTMX 1.9.10, Alpine.js 3.14.1, Tailwind CSS (compiled at build time; all JS self-hosted) |
 | Container | Docker (multi-stage, non-root) |
 | Hosting | Azure Container Apps |
 | Image registry | Azure Container Registry (ACR) |
@@ -377,13 +377,8 @@ az acr create \
   --name <ACR_NAME> \
   --sku Basic
 
-# Enable admin access (used by GitHub Actions to push images)
-az acr update --name <ACR_NAME> --admin-enabled true
-
-# Get credentials for GitHub secrets
-az acr credential show --name <ACR_NAME>
-# → use username as ACR_USERNAME, password as ACR_PASSWORD
-# → ACR_LOGIN_SERVER = <ACR_NAME>.azurecr.io
+# ACR_LOGIN_SERVER = <ACR_NAME>.azurecr.io
+# No admin credentials needed — GitHub Actions authenticates via OIDC (see step 6)
 ```
 
 ### 3. Create Azure Storage Account (for recipe images)
@@ -425,11 +420,10 @@ az containerapp create \
   --environment <ENVIRONMENT_NAME> \
   --image <ACR_LOGIN_SERVER>/recipesite:latest \
   --registry-server <ACR_LOGIN_SERVER> \
-  --registry-username <ACR_USERNAME> \
-  --registry-password <ACR_PASSWORD> \
   --target-port 8000 \
   --ingress external \
   --min-replicas 1 \
+  --system-assigned \
   --env-vars \
     DJANGO_SETTINGS_MODULE=config.settings.production \
     DJANGO_SECRET_KEY=<SECRET> \
@@ -443,6 +437,19 @@ az containerapp create \
     AZURE_STORAGE_ACCOUNT_NAME=<STORAGE_ACCOUNT_NAME> \
     AZURE_STORAGE_ACCOUNT_KEY=<STORAGE_KEY> \
     AZURE_STORAGE_CONTAINER=media
+
+# Grant the Container App's managed identity permission to pull from ACR
+PRINCIPAL_ID=$(az containerapp show \
+  --name <CONTAINER_APP_NAME> \
+  --resource-group <RESOURCE_GROUP> \
+  --query identity.principalId -o tsv)
+
+ACR_ID=$(az acr show --name <ACR_NAME> --resource-group <RESOURCE_GROUP> --query id -o tsv)
+
+az role assignment create \
+  --assignee $PRINCIPAL_ID \
+  --role AcrPull \
+  --scope $ACR_ID
 ```
 
 ### 6. Set Up OIDC Authentication (replaces AZURE_CREDENTIALS)
@@ -501,9 +508,7 @@ All secrets are set in GitHub → Settings → Secrets and variables → Actions
 | `AZURE_CLIENT_ID` | `az ad app list --display-name github-actions-recipe-site` | Deploy (OIDC login) |
 | `AZURE_TENANT_ID` | `az account show --query tenantId` | Deploy (OIDC login) |
 | `AZURE_SUBSCRIPTION_ID` | `az account show --query id` | Deploy (OIDC login) |
-| `ACR_LOGIN_SERVER` | `<ACR_NAME>.azurecr.io` | Deploy (image push) |
-| `ACR_USERNAME` | `az acr credential show --name <ACR_NAME>` | Deploy (image push) |
-| `ACR_PASSWORD` | `az acr credential show --name <ACR_NAME>` | Deploy (image push) |
+| `ACR_LOGIN_SERVER` | `<ACR_NAME>.azurecr.io` | Deploy (image push via OIDC) |
 | `CONTAINER_APP_NAME` | Name of your Container App resource | Deploy (update revision) |
 | `RESOURCE_GROUP` | Name of your Azure resource group | Deploy (update revision) |
 | `DJANGO_ALLOWED_HOSTS` | Your Container App domain | Deploy (env var injection) |
@@ -568,10 +573,12 @@ The Django admin is not just password-protected — it is removed from `INSTALLE
 - HTTPS enforced (`SECURE_SSL_REDIRECT = True`)
 - HSTS for 1 year with subdomains and preload
 - Secure, HttpOnly, SameSite=Strict cookies
-- Content Security Policy via `django-csp`
-- Rate limiting on all endpoints via `django-ratelimit` (reads real client IP through Azure proxy)
+- Content Security Policy via `django-csp` — `script-src: 'self'` only; no CDN, no `unsafe-inline`
+- All JavaScript (Alpine.js, HTMX, app.js) is self-hosted and served by WhiteNoise with content-hashed filenames — no external script dependencies
+- Tailwind CSS compiled from source at Docker build time — no CDN loaded at runtime
+- Rate limiting on all endpoints via `django-ratelimit` — HTTP 429 with `Retry-After: 60` header
 - Brute-force lockout after 5 failed logins via `django-axes` (1-hour lockout)
-- `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
+- `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`
 
 ### CI/CD security
 
