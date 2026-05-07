@@ -57,6 +57,7 @@ The `Dockerfile` uses a two-stage build to keep the final image small and free o
 - Base: `python:3.12-slim` (clean, no compiler)
 - Copies `/install` from builder — no build tools ship in the final image
 - Creates non-root system user `appuser:appgroup`
+- Copies the Tailwind CSS standalone CLI from the builder, compiles `tailwind.input.css` to a minified `tailwind.output.css`, then **deletes the binary** — it never ships in the final image
 - Runs `collectstatic` at build time (using a placeholder `SECRET_KEY`)
 - Switches to `appuser` before `EXPOSE` and `CMD`
 - The real `SECRET_KEY` is **never baked into the image** — injected at runtime via Container Apps environment variables
@@ -118,7 +119,7 @@ Pull requests to `main` run CI + Security but never deploy.
 
 | Job | Tool | Gate |
 |-----|------|------|
-| Python CVE Audit | `pip-audit` | Fails on any CVE found in installed packages |
+| Python CVE Audit | `pip-audit` | Upgrades pip before auditing; fails on any unfixed CVE in installed packages |
 | Python SAST | `bandit` | Fails on any HIGH severity finding |
 | CodeQL Analysis | GitHub CodeQL | Reports to Security tab, does not fail pipeline |
 | Docker Image Scan | Trivy v0.20.0 | Fails on any fixable HIGH/CRITICAL CVE in container |
@@ -164,7 +165,7 @@ The deploy workflow uses **OIDC federated credentials** — no long-lived `AZURE
 **Federated credential constraint:**
 - Issuer: `https://token.actions.githubusercontent.com`
 - Subject: `repo:casto-tech/recipe_site:environment:production`
-- Only deploys from the `production` GitHub environment can authenticate
+- Both the `build-and-push` and `deploy` jobs declare `environment: production`, so both authenticate with the same federated credential — a single credential covers the full deploy workflow
 
 **Required GitHub secrets:**
 
@@ -192,7 +193,7 @@ All workflows use `permissions: {}` at the top level (deny all by default). Each
 | Security / sast | `contents: read` |
 | Security / codeql | `contents: read`, `actions: read`, `security-events: write` |
 | Security / trivy | `contents: read`, `security-events: write` |
-| Deploy / build-and-push | `contents: read` |
+| Deploy / build-and-push | `contents: read`, `id-token: write` |
 | Deploy / deploy | `contents: read`, `id-token: write` |
 
 ### SHA-Pinned Actions
@@ -250,16 +251,16 @@ This means:
 
 ### Content Security Policy
 
-Configured via `django-csp` middleware, appended only in production:
+Configured via `django-csp` middleware, appended only in production. All JavaScript (Alpine.js, HTMX, app.js) and CSS (Tailwind) are self-hosted, so no CDN sources are needed.
 
 | Directive | Allowed Sources | Notes |
 |-----------|----------------|-------|
 | `default-src` | `'self'` | Baseline for all resource types |
-| `script-src` | `'self'`, Tailwind CDN, unpkg | No `unsafe-inline` for scripts |
-| `style-src` | `'self'`, `'unsafe-inline'`, Tailwind CDN, Google Fonts | `unsafe-inline` required by Tailwind CDN Play (injects `<style>` tags) — known technical debt |
-| `img-src` | `'self'`, `data:`, Azure Blob Storage domain | Blob domain added dynamically from env var |
-| `font-src` | `'self'`, Google Fonts CDN | |
-| `connect-src` | `'self'` | No external API calls from the browser |
+| `script-src` | `'self'` | All JS self-hosted via WhiteNoise; no CDN, no `unsafe-inline` |
+| `style-src` | `'self'`, `fonts.googleapis.com` | No `unsafe-inline`; Tailwind compiled at build time |
+| `img-src` | `'self'`, `data:`, Azure Blob Storage domain | Blob domain added dynamically from `AZURE_STORAGE_ACCOUNT_NAME` env var |
+| `font-src` | `'self'`, `fonts.gstatic.com` | Google Font files served from gstatic |
+| `connect-src` | `'self'` | HTMX XHR requests stay on-origin |
 | `frame-ancestors` | `'none'` | Prevents clickjacking (equivalent to `X-Frame-Options: DENY`) |
 | `base-uri` | `'none'` | Prevents `<base>` tag injection |
 | `form-action` | `'self'` | Forms can only submit to this origin |
@@ -293,6 +294,7 @@ Rate limiting reads `REMOTE_ADDR`, which Gunicorn rewrites from `X-Forwarded-For
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | `SECURE_REFERRER_POLICY` |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` | `SECURE_HSTS_*` settings |
 | `Content-Security-Policy` | (see above) | `django-csp` middleware |
+| `Permissions-Policy` | `camera=(), geolocation=(), microphone=(), payment=(), accelerometer=(), gyroscope=(), magnetometer=(), usb=()` | `django-permissions-policy` middleware |
 
 ### Media Storage
 
@@ -336,12 +338,10 @@ Structured JSON output to stdout — captured and indexed by Azure Monitor:
 
 | Secret | Used By |
 |--------|---------|
-| `AZURE_CLIENT_ID` | OIDC login to Azure (deploy) |
-| `AZURE_TENANT_ID` | OIDC login to Azure (deploy) |
-| `AZURE_SUBSCRIPTION_ID` | OIDC login to Azure (deploy) |
-| `ACR_LOGIN_SERVER` | ACR hostname (e.g. `myacr.azurecr.io`) |
-| `ACR_USERNAME` | ACR service principal username |
-| `ACR_PASSWORD` | ACR service principal password |
+| `AZURE_CLIENT_ID` | OIDC login to Azure (both deploy jobs) |
+| `AZURE_TENANT_ID` | OIDC login to Azure (both deploy jobs) |
+| `AZURE_SUBSCRIPTION_ID` | OIDC login to Azure (both deploy jobs) |
+| `ACR_LOGIN_SERVER` | ACR hostname for image tagging and `az acr login` (e.g. `myacr.azurecr.io`) |
 | `CONTAINER_APP_NAME` | Azure Container App name |
 | `RESOURCE_GROUP` | Azure resource group name |
 | `DJANGO_ALLOWED_HOSTS` | Injected into Container App on each deploy |
