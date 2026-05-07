@@ -24,14 +24,15 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
       - name: Run pip-audit
         # Fails the pipeline on any CVE in installed packages.
-        # CVE-2026-3219: unfixed vulnerability in pip itself — no fix version exists yet.
-        # Remove the ignore once pip ships a patched release.
-        run: pip-audit --strict --vulnerability-service pypi --ignore-vuln CVE-2026-3219
+        run: pip-audit --strict --vulnerability-service pypi
 
   # ── Job 2: Python SAST (bandit) ───────────────────────────────────────────
   sast:
