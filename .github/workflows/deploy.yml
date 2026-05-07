@@ -34,6 +34,7 @@ jobs:
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
       id-token: write  # Required for OIDC authentication to Azure
